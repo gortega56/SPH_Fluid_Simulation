@@ -4,14 +4,16 @@
 #include "Collider.h"
 #include <vector>
 
+
+struct SPHParticle
+{
+	Transform mTransform;
+	RigidBody mRigidBody;
+};
+
 struct SPHCell
 {
-	vector<GameObject*> mGameObjects;	// Particles
-	vector<Mesh*>		mMesh;
-	vector<Collider*>   mColliders;
-	vector<Geometry*>	mGeometry;
-	vector<Transform*>	mTransforms;
-	vector<RigidBody*>	mRigidBodies;
+	vector<SPHParticle> particles;
 };
 
 class SPHFluidSimulation :
