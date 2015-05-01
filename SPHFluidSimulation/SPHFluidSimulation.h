@@ -48,5 +48,15 @@ public:
 	void updateScene(double secondsElapsed);
 	void renderScene(double secondsElapsed);
 	void handleEvents(GLFWwindow* window);
+
+	void updateParticleGrid();
+	void updateParticles();
+	void stepSimulation(double secondsElapsed);
+
+	float SmoothKernelPoly6(float r2, float h, float h2);
+	float SmoothKernelPoly6Laplacian(float r2, float h, float h2);
+	void  SmoothKernelPoly6Gradient(vec3 rDiff, float r2, float h, float h2, vec3* gradient);
+	void  SmoothKernelSpikyGradient(vec3 rDiff, float r, float h, vec3* gradient);
+	float SmoothKernelViscosityLaplacian(float r, float h);
 };
 
