@@ -3,7 +3,7 @@
 #include "GameObject.h"
 #include "Collider.h"
 #include <vector>
-
+#include <unordered_map>
 
 struct SPHParticle
 {
@@ -20,7 +20,6 @@ class SPHFluidSimulation :
 	public Game
 {
 public:
-	int			mSPHGridX, mSPHGridY, mSPHGridZ;
 	int			mGameObjectCount;
 	int			mColliderCount;
 	int			mMeshCount;
@@ -38,8 +37,7 @@ public:
 	
 	
 	SPHCell* mSPHGrid;
-
-
+	unordered_map<int, vector<int>> mSPHCellIndexMap;
 
 	SPHFluidSimulation();
 	~SPHFluidSimulation();
@@ -49,6 +47,7 @@ public:
 	void renderScene(double secondsElapsed);
 	void handleEvents(GLFWwindow* window);
 
+	void initParticleGrid();
 	void updateParticleGrid();
 	void updateParticles();
 	void stepSimulation(double secondsElapsed);
