@@ -147,6 +147,7 @@ void SPHFluidSimulation::updateParticles()
 				vector<int>& neighborIndices = mSPHCellIndexMap.at(index);
 
 				vec3 fPressure = vec3(0.0f);
+				vec3 fViscous = vec3(0.0f);
 
 				// Update each particle
 				for (int p1 = 0; p1 < cell.particles.size(); p1++) {
@@ -162,11 +163,14 @@ void SPHFluidSimulation::updateParticles()
 								cell.particles[p1].mDensity += cell.particles[p1].mRigidBody.mass * SmoothKernelPoly6(radius2, SPH_PARTICLE_RADIUS, SPH_PARTICLE_RADIUS2);
 								cell.particles[p1].mPressure = WATER_VAPOR_CONSTANT * (cell.particles[p1].mDensity - WATER_REST_DENSITY);
 
-								// PressureForce 
+								// Pressure Force 
 								float symmetricPressure = (cell.particles[p1].mPressure + nCell.particles[p2].mPressure) / (2 * nCell.particles[p2].mDensity);
 								vec3 pGradient = SmoothKernelSpikyGradient(rDiff, radius, SPH_PARTICLE_RADIUS);
 								fPressure += cell.particles[p1].mRigidBody.mass * symmetricPressure * pGradient;
 
+								// Viscous Force
+								vec3 symmetricVelocity = (nCell.particles[p2].mRigidBody.velocity - cell.particles[p1].mRigidBody.velocity) / nCell.particles[p2].mDensity;
+								float vGradient = SmoothKernelViscosityLaplacian()
 							}
 						}
 					}
