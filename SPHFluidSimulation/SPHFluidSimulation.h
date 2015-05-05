@@ -7,8 +7,12 @@
 
 struct SPHParticle
 {
-	Transform mTransform;
-	RigidBody mRigidBody;
+	Transform	mTransform;
+	RigidBody	mRigidBody;
+	float		mDensity;
+	float		mPressure;
+
+	SPHParticle() : mTransform(Transform()), mRigidBody(RigidBody()), mDensity(0.0f) {};
 };
 
 struct SPHCell
@@ -54,8 +58,8 @@ public:
 
 	float SmoothKernelPoly6(float r2, float h, float h2);
 	float SmoothKernelPoly6Laplacian(float r2, float h, float h2);
-	void  SmoothKernelPoly6Gradient(vec3 rDiff, float r2, float h, float h2, vec3* gradient);
-	void  SmoothKernelSpikyGradient(vec3 rDiff, float r, float h, vec3* gradient);
+	vec3  SmoothKernelPoly6Gradient(vec3 rDiff, float r2, float h, float h2);
+	vec3  SmoothKernelSpikyGradient(vec3 rDiff, float r, float h);
 	float SmoothKernelViscosityLaplacian(float r, float h);
 };
 

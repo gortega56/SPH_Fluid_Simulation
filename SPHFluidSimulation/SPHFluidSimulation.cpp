@@ -1,20 +1,26 @@
 #include "SPHFluidSimulation.h"
+#include <glm/gtx/norm.hpp>
+
 #define _USE_MATH_DEFINES 
 #include <math.h>
 
-#define PARTICLE_COUNT		1
-#define MESH_COUNT			1
-#define GEOMETRY_COUNT		1
+#define PARTICLE_COUNT			1
+#define MESH_COUNT				1
+#define GEOMETRY_COUNT			1
 
-#define SPH_GRID_X			3
-#define SPH_GRID_Y			3
-#define SPH_GRID_Z			3
+#define SPH_GRID_X				3
+#define SPH_GRID_Y				3
+#define SPH_GRID_Z				3
 
-#define SPH_CONTAINER_X		0.5f
-#define SPH_CONTAINER_Y		0.5f
-#define SPH_CONTAINER_Z		0.5f
+#define SPH_CONTAINER_X			0.5f
+#define SPH_CONTAINER_Y			0.5f
+#define SPH_CONTAINER_Z			0.5f
 
-#define SPH_PARTICLE_RADIUS 0.5f
+#define SPH_PARTICLE_RADIUS		0.5f
+#define SPH_PARTICLE_RADIUS2	SPH_PARTICLE_RADIUS * SPH_PARTICLE_RADIUS
+
+#define WATER_REST_DENSITY		998.29
+#define WATER_VAPOR_CONSTANT	3.0
 
 SPHFluidSimulation::SPHFluidSimulation() : mGameObjectCount(PARTICLE_COUNT), mColliderCount(PARTICLE_COUNT), mTransformCount(PARTICLE_COUNT), mMeshCount(MESH_COUNT), mRigidBodyCount(PARTICLE_COUNT), mGeometryCount(GEOMETRY_COUNT)
 {
@@ -91,8 +97,6 @@ void SPHFluidSimulation::initParticleGrid()
 			}
 		}
 	}
-
-	printf("MAP DONE");
 }
 
 void SPHFluidSimulation::updateParticleGrid()
@@ -138,10 +142,37 @@ void SPHFluidSimulation::updateParticles()
 		for (int y = 0; y < SPH_GRID_Y; y++) {
 			for (int z = 0; z < SPH_GRID_Z; z++) {
 			
-				SPHCell& cell = mSPHGrid[x + (y * SPH_GRID_X) + (z * SPH_GRID_X * SPH_GRID_Y)];
+				int index = x + (y * SPH_GRID_X) + (z * SPH_GRID_X * SPH_GRID_Y);
+				SPHCell& cell = mSPHGrid[index];
+				vector<int>& neighborIndices = mSPHCellIndexMap.at(index);
+
+				vec3 fPressure = vec3(0.0f);
 
 				// Update each particle
-				for (int p = 0; p < cell.particles.size(); p++) {
+				for (int p1 = 0; p1 < cell.particles.size(); p1++) {
+					// Against all neighboring cell particles
+					for (int nIndex : neighborIndices) {
+						SPHCell& nCell = mSPHGrid[nIndex];
+						for (int p2 = 0; p2 < nCell.particles.size(); p2++) {
+							vec3 rDiff = cell.particles[p1].mTransform.Position - nCell.particles[p2].mTransform.Position;
+							float radius = length(rDiff);
+							float radius2 = radius * radius;
+							if (radius2 <= SPH_PARTICLE_RADIUS2) {
+								// Density
+								cell.particles[p1].mDensity += cell.particles[p1].mRigidBody.mass * SmoothKernelPoly6(radius2, SPH_PARTICLE_RADIUS, SPH_PARTICLE_RADIUS2);
+								cell.particles[p1].mPressure = WATER_VAPOR_CONSTANT * (cell.particles[p1].mDensity - WATER_REST_DENSITY);
+
+								// PressureForce 
+								float symmetricPressure = (cell.particles[p1].mPressure + nCell.particles[p2].mPressure) / (2 * nCell.particles[p2].mDensity);
+								vec3 pGradient = SmoothKernelSpikyGradient(rDiff, radius, SPH_PARTICLE_RADIUS);
+								fPressure += cell.particles[p1].mRigidBody.mass * symmetricPressure * pGradient;
+
+							}
+						}
+					}
+					
+					// Remove comparison between identical particle
+					cell.particles[p1].mDensity -= SmoothKernelPoly6(0, SPH_PARTICLE_RADIUS, SPH_PARTICLE_RADIUS2);
 
 
 				}
@@ -168,16 +199,16 @@ float SPHFluidSimulation::SmoothKernelPoly6Laplacian(float r2, float h, float h2
 	return coefficient * (h2 - r2) * ((3.f * h2) - (7.f * r2));
 }
 
-void SPHFluidSimulation::SmoothKernelPoly6Gradient(vec3 rDiff, float r2, float h, float h2, vec3* gradient)
+vec3 SPHFluidSimulation::SmoothKernelPoly6Gradient(vec3 rDiff, float r2, float h, float h2)
 {
 	float coefficient = -945.f / (32.0f * M_PI * powf(h, 9));
-	*gradient = (coefficient * powf(h2 - r2, 2)) * rDiff;
+	return (coefficient * powf(h2 - r2, 2)) * rDiff;
 }
 
-void SPHFluidSimulation::SmoothKernelSpikyGradient(vec3 rDiff, float r, float h, vec3* gradient)
+vec3 SPHFluidSimulation::SmoothKernelSpikyGradient(vec3 rDiff, float r, float h)
 {
 	float coefficient = -45.f / (M_PI * powf(h, 6));
-	*gradient = (coefficient * powf(h - r, 2) * rDiff) / r;
+	return (coefficient * powf(h - r, 2) * rDiff) / r;
 }
 
 float SPHFluidSimulation::SmoothKernelViscosityLaplacian(float r, float h)
