@@ -12,15 +12,21 @@
 #define SPH_GRID_Y				3
 #define SPH_GRID_Z				3
 
-#define SPH_CONTAINER_X			0.5f
-#define SPH_CONTAINER_Y			0.5f
-#define SPH_CONTAINER_Z			0.5f
+#define SPH_CONTAINER_X			5.0f
+#define SPH_CONTAINER_Y			5.0f
+#define SPH_CONTAINER_Z			5.0f
 
-#define SPH_PARTICLE_RADIUS		0.5f
-#define SPH_PARTICLE_RADIUS2	SPH_PARTICLE_RADIUS * SPH_PARTICLE_RADIUS
+#define SPH_CORE_RADIUS			SPH_CONTAINER_X / SPH_GRID_X
+#define SPH_CORE_RADIUS2		SPH_CORE_RADIUS * SPH_CORE_RADIUS
 
-#define WATER_REST_DENSITY		998.29
-#define WATER_VAPOR_CONSTANT	3.0
+#define WATER_REST_DENSITY		998.29f
+#define WATER_VAPOR_CONSTANT	3.0f
+#define WATER_VISCOSITY			3.5f
+
+#define SURFACE_TENSION			0.0728f
+#define COLOR_FIELD_THRESHOLD   7.065f
+
+#define GRAVITATIONAL_ACCELERATION	-9.80665f
 
 SPHFluidSimulation::SPHFluidSimulation() : mGameObjectCount(PARTICLE_COUNT), mColliderCount(PARTICLE_COUNT), mTransformCount(PARTICLE_COUNT), mMeshCount(MESH_COUNT), mRigidBodyCount(PARTICLE_COUNT), mGeometryCount(GEOMETRY_COUNT)
 {
@@ -53,7 +59,9 @@ void SPHFluidSimulation::init()
 void SPHFluidSimulation::updateScene(double secondsElapsed)
 {
 	updateParticleGrid();
-
+	updateParticlesPressureDensity();
+	updateParticlesForces();
+	stepSimulation(secondsElapsed);
 }
 
 void SPHFluidSimulation::renderScene(double secondsElapsed)
@@ -112,17 +120,14 @@ void SPHFluidSimulation::updateParticleGrid()
 
 				vector<int> indicesToRemove;
 				for (int p = 0; p < cell.particles.size(); p++) {
-					// This calculation depends on where my world space container is.
-					// SPH Cells start at 0,0,0 and are built to +n, +n, +n
-					int nextCellX = std::floor((cell.particles[p].mTransform.Position.x + halfContainerX) / SPH_PARTICLE_RADIUS);
-					int nextCellY = std::floor((cell.particles[p].mTransform.Position.y + halfContainerY) / SPH_PARTICLE_RADIUS);
-					int nextCellZ = std::floor((cell.particles[p].mTransform.Position.z + halfContainerZ) / SPH_PARTICLE_RADIUS);
+					int nextCell[3];
+					NormalizedGridPosition(cell.particles[p].mTransform.Position, nextCell);
 
 					// TO DO: Will particles leave the grid...
 
 					// Check if particle has moved to another grid
-					if (x != nextCellX || y != nextCellY || z != nextCellZ) {
-						mSPHGrid[nextCellX + (nextCellY * SPH_GRID_X) + (nextCellZ * SPH_GRID_X * SPH_GRID_Y)].particles.push_back(cell.particles[p]);
+					if (x != nextCell[0] || y != nextCell[1] || z != nextCell[2]) {
+						mSPHGrid[nextCell[0] + (nextCell[1] * SPH_GRID_X) + (nextCell[2] * SPH_GRID_X * SPH_GRID_Y)].particles.push_back(cell.particles[p]);
 						indicesToRemove.push_back(p);
 					}
 				}
@@ -135,7 +140,7 @@ void SPHFluidSimulation::updateParticleGrid()
 	}
 }
 
-void SPHFluidSimulation::updateParticles()
+void SPHFluidSimulation::updateParticlesForces()
 {
 	// For each SPHCell
 	for (int x = 0; x < SPH_GRID_X; x++) {
@@ -146,49 +151,156 @@ void SPHFluidSimulation::updateParticles()
 				SPHCell& cell = mSPHGrid[index];
 				vector<int>& neighborIndices = mSPHCellIndexMap.at(index);
 
-				vec3 fPressure = vec3(0.0f);
-				vec3 fViscous = vec3(0.0f);
+				vec3 fPressure, fViscous, fSurface, fGravity;
 
 				// Update each particle
 				for (int p1 = 0; p1 < cell.particles.size(); p1++) {
+
+					vec3 colorFieldNormal = vec3(0.0f);
+					float colorFieldLaplacian = 0.0f;
+
 					// Against all neighboring cell particles
 					for (int nIndex : neighborIndices) {
 						SPHCell& nCell = mSPHGrid[nIndex];
 						for (int p2 = 0; p2 < nCell.particles.size(); p2++) {
 							vec3 rDiff = cell.particles[p1].mTransform.Position - nCell.particles[p2].mTransform.Position;
-							float radius = length(rDiff);
-							float radius2 = radius * radius;
-							if (radius2 <= SPH_PARTICLE_RADIUS2) {
-								// Density
-								cell.particles[p1].mDensity += cell.particles[p1].mRigidBody.mass * SmoothKernelPoly6(radius2, SPH_PARTICLE_RADIUS, SPH_PARTICLE_RADIUS2);
-								cell.particles[p1].mPressure = WATER_VAPOR_CONSTANT * (cell.particles[p1].mDensity - WATER_REST_DENSITY);
-
+							float rDistance = length(rDiff);
+							float rDistance2 = rDistance * rDistance;
+							if (rDistance2 <= SPH_CORE_RADIUS2) {
 								// Pressure Force 
 								float symmetricPressure = (cell.particles[p1].mPressure + nCell.particles[p2].mPressure) / (2 * nCell.particles[p2].mDensity);
-								vec3 pGradient = SmoothKernelSpikyGradient(rDiff, radius, SPH_PARTICLE_RADIUS);
+								vec3 pGradient = SmoothKernelSpikyGradient(rDiff, rDistance, SPH_CORE_RADIUS);
 								fPressure += cell.particles[p1].mRigidBody.mass * symmetricPressure * pGradient;
 
 								// Viscous Force
 								vec3 symmetricVelocity = (nCell.particles[p2].mRigidBody.velocity - cell.particles[p1].mRigidBody.velocity) / nCell.particles[p2].mDensity;
-								float vGradient = SmoothKernelViscosityLaplacian()
+								float vGradient = SmoothKernelViscosityLaplacian(rDistance, SPH_CORE_RADIUS);
+								fViscous += nCell.particles[p2].mRigidBody.mass * symmetricVelocity * vGradient;
+
+								// Surface Force
+								float coefficient = (nCell.particles[p2].mRigidBody.mass / nCell.particles[p2].mDensity);
+								colorFieldNormal += coefficient * SmoothKernelPoly6Gradient(rDiff, rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
+								colorFieldLaplacian += coefficient * SmoothKernelPoly6Laplacian(rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
 							}
 						}
+					}	
+
+					fPressure *= -1;
+					fViscous *= WATER_VISCOSITY;
+					fSurface = vec3(0.0f);
+					fGravity = cell.particles[p1].mDensity * vec3(0.0f, GRAVITATIONAL_ACCELERATION, 0.0f);
+
+					// Finish up force calculations
+					float CFNLength = length(colorFieldNormal);
+					if (CFNLength > COLOR_FIELD_THRESHOLD) {
+						fSurface = -SURFACE_TENSION * colorFieldLaplacian * (colorFieldNormal / CFNLength);
 					}
-					
-					// Remove comparison between identical particle
-					cell.particles[p1].mDensity -= SmoothKernelPoly6(0, SPH_PARTICLE_RADIUS, SPH_PARTICLE_RADIUS2);
 
-
+					cell.particles[p1].mAcceleration = (fPressure + fViscous + fSurface + fGravity) / cell.particles[p1].mDensity;
 				}
 
 			}
 		}
 	}
+
+	applyBoundingVolumeForce();
+}
+
+void SPHFluidSimulation::updateParticlesPressureDensity()
+{
+	// For each SPHCell
+	for (int x = 0; x < SPH_GRID_X; x++) {
+		for (int y = 0; y < SPH_GRID_Y; y++) {
+			for (int z = 0; z < SPH_GRID_Z; z++) {
+
+				int index = x + (y * SPH_GRID_X) + (z * SPH_GRID_X * SPH_GRID_Y);
+				SPHCell& cell = mSPHGrid[index];
+				vector<int>& neighborIndices = mSPHCellIndexMap.at(index);
+
+				// Update each particle
+				for (int p1 = 0; p1 < cell.particles.size(); p1++) {
+
+					// Start density as value of particle compared with self
+					float pDensity = -SmoothKernelPoly6(0, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
+
+					// Against all neighboring cell particles
+					for (int nIndex : neighborIndices) {
+						SPHCell& nCell = mSPHGrid[nIndex];
+						for (int p2 = 0; p2 < nCell.particles.size(); p2++) {
+							vec3 rDiff = cell.particles[p1].mTransform.Position - nCell.particles[p2].mTransform.Position;
+							float rDistance = length(rDiff);
+							float rDistance2 = rDistance * rDistance;
+							if (rDistance2 <= SPH_CORE_RADIUS2) {
+								// Accumulate density from neighboring particles
+								pDensity += cell.particles[p1].mRigidBody.mass * SmoothKernelPoly6(rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
+							}
+						}
+					}
+
+					// Update particle with density and pressure
+					cell.particles[p1].mPressure = WATER_VAPOR_CONSTANT * (pDensity - WATER_REST_DENSITY);
+					cell.particles[p1].mDensity = pDensity;
+				}
+			}
+		}
+	}
+}
+
+void SPHFluidSimulation::applyBoundingVolumeForce()
+{
+
 }
 
 void SPHFluidSimulation::stepSimulation(double secondsElapsed)
 {
+	double t = 0.0;
+	double dt = 0.01;
 
+	double accumulator = 0.0;
+
+	double newTime = secondsElapsed;
+
+	double frameTime = newTime - currentTime;
+	if (frameTime > 0.25)
+	{
+		frameTime = 0.25;
+	}
+
+	currentTime = newTime;
+	accumulator += frameTime;
+
+	while (accumulator >= dt)
+	{
+		integrateCellParticles(dt);
+		t += dt;
+		accumulator -= dt;
+	}
+
+	const double alpha = accumulator / dt;
+	// interpolate between previous phyics state and current physics state
+}
+
+void SPHFluidSimulation::integrateCellParticles(double deltaTime)
+{
+	for (int x = 0; x < SPH_GRID_X; x++) {
+		for (int y = 0; y < SPH_GRID_Y; y++) {
+			for (int z = 0; z < SPH_GRID_Z; z++) {
+				
+				SPHCell& cell = mSPHGrid[x + (y * SPH_GRID_X) + (z * SPH_GRID_X * SPH_GRID_Y)];
+				for (SPHParticle particle : cell.particles) {
+					particle.mRigidBody.velocity += particle.mAcceleration * (float)deltaTime;
+					particle.mTransform.Position += particle.mRigidBody.velocity * (float)deltaTime;
+				}
+			}
+		}
+	}
+}
+
+void SPHFluidSimulation::NormalizedGridPosition(vec3 worldPosition, int* indices)
+{
+	indices[0] = std::floor((worldPosition.x / SPH_CONTAINER_X) * SPH_GRID_X);
+	indices[1] = std::floor((worldPosition.y / SPH_CONTAINER_Y) * SPH_GRID_Y);
+	indices[2] = std::floor((-worldPosition.z / SPH_CONTAINER_Z) * SPH_GRID_Z);
 }
 
 float SPHFluidSimulation::SmoothKernelPoly6(float r2, float h, float h2)

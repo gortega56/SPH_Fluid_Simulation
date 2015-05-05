@@ -9,6 +9,7 @@ struct SPHParticle
 {
 	Transform	mTransform;
 	RigidBody	mRigidBody;
+	vec3		mAcceleration;
 	float		mDensity;
 	float		mPressure;
 
@@ -38,8 +39,6 @@ public:
 	Transform*	mTransform;
 	RigidBody*	mRigidBodies;
 	
-	
-	
 	SPHCell* mSPHGrid;
 	unordered_map<int, vector<int>> mSPHCellIndexMap;
 
@@ -53,9 +52,13 @@ public:
 
 	void initParticleGrid();
 	void updateParticleGrid();
-	void updateParticles();
+	void updateParticlesForces();
+	void updateParticlesPressureDensity();
+	void applyBoundingVolumeForce();
 	void stepSimulation(double secondsElapsed);
+	void integrateCellParticles(double deltaTime);
 
+	void SPHFluidSimulation::NormalizedGridPosition(vec3 worldPosition, int* indices);
 	float SmoothKernelPoly6(float r2, float h, float h2);
 	float SmoothKernelPoly6Laplacian(float r2, float h, float h2);
 	vec3  SmoothKernelPoly6Gradient(vec3 rDiff, float r2, float h, float h2);
