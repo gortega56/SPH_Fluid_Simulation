@@ -36,20 +36,33 @@ public:
 	Mesh*		mMesh;
 	Collider*   mColliders;
 	Geometry*	mGeometry;
-	Transform*	mTransform;
 	RigidBody*	mRigidBodies;
 	
+	GameObject* mBoundingBox;
+	Mesh*		mSphere;
+	Mesh*		mCube;
+	Material*	mSphereMaterial;
+	Material*	mCubeMaterial;
+
+	mat4x4*		mTransforms;
+
 	SPHCell* mSPHGrid;
 	unordered_map<int, vector<int>> mSPHCellIndexMap;
 
 	SPHFluidSimulation();
 	~SPHFluidSimulation();
 
+	// Game Overrides
 	void init();
 	void updateScene(double secondsElapsed);
 	void renderScene(double secondsElapsed);
 	void handleEvents(GLFWwindow* window);
 
+	// Render Methods
+	void initGeometry();
+	void updateTransforms();
+
+	// Simulation Methods
 	void initParticleGrid();
 	void updateParticleGrid();
 	void updateParticlesForces();
@@ -58,7 +71,10 @@ public:
 	void stepSimulation(double secondsElapsed);
 	void integrateCellParticles(double deltaTime);
 
-	void SPHFluidSimulation::NormalizedGridPosition(vec3 worldPosition, int* indices);
+	// Convenience
+	void  NormalizedGridPosition(vec3 worldPosition, int* indices);
+	
+	// Smoothing Kernel Functions
 	float SmoothKernelPoly6(float r2, float h, float h2);
 	float SmoothKernelPoly6Laplacian(float r2, float h, float h2);
 	vec3  SmoothKernelPoly6Gradient(vec3 rDiff, float r2, float h, float h2);

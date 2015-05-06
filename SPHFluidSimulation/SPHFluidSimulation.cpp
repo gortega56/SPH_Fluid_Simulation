@@ -32,18 +32,20 @@ SPHFluidSimulation::SPHFluidSimulation() : mGameObjectCount(PARTICLE_COUNT), mCo
 {
 	// Missing GameObjects for now
 	mColliders = new Collider[mColliderCount];
-	mTransform = new Transform[mTransformCount];
 	mMesh = new Mesh[mMeshCount];
 	mRigidBodies = new RigidBody[mRigidBodyCount];
 	mGeometry = new Geometry[mGeometryCount];
+	
 	mSPHGrid = new SPHCell[SPH_GRID_X * SPH_GRID_Y * SPH_GRID_Z];
+	mTransforms = new mat4x4[mTransformCount];
+	mBoundingBox = new GameObject();
 }
 
 
 SPHFluidSimulation::~SPHFluidSimulation()
 {
 	delete[] mColliders;
-	delete[] mTransform;
+	delete[] mTransforms;
 	delete[] mMesh;
 	delete[] mRigidBodies;
 	delete[] mGeometry;
@@ -54,6 +56,7 @@ void SPHFluidSimulation::init()
 	Game::init();
 	initParticleGrid();
 	
+	
 }
 
 void SPHFluidSimulation::updateScene(double secondsElapsed)
@@ -62,6 +65,7 @@ void SPHFluidSimulation::updateScene(double secondsElapsed)
 	updateParticlesPressureDensity();
 	updateParticlesForces();
 	stepSimulation(secondsElapsed);
+	updateTransforms();
 }
 
 void SPHFluidSimulation::renderScene(double secondsElapsed)
@@ -73,6 +77,54 @@ void SPHFluidSimulation::renderScene(double secondsElapsed)
 void SPHFluidSimulation::handleEvents(GLFWwindow* window)
 {
 
+}
+
+void SPHFluidSimulation::initGeometry()
+{
+	// Bounding Volume
+	Geometry *cube = Geometry::Cube();
+	mCube = new Mesh(*cube);
+	mCube->RenderMode = GL_TRIANGLES;
+	mCube->PolygonMode = GL_LINE;
+
+	mCubeMaterial = new Material();
+	mCubeMaterial->SetShaderStage("shaders/TextureVertexShader.glsl", GL_VERTEX_SHADER);
+	mCubeMaterial->SetShaderStage("shaders/TextureFragmentShader.glsl", GL_FRAGMENT_SHADER);
+	mCubeMaterial->SetShader();
+
+	mCubeMaterial->BindMeshAttributes(*mCube, "vertexPosition", NULL, NULL, "texCoord", NULL);
+	mCubeMaterial->BindUniformAttribute("clip");
+
+	mBoundingBox->geometry = cube;
+	mBoundingBox->mesh = mCube;
+	mBoundingBox->material = mCubeMaterial;
+
+	// Particle
+	Geometry *sphere = Geometry::Sphere(2, 2);
+	mSphere = new Mesh(*sphere);
+	mSphere->RenderMode = GL_TRIANGLES;
+	mSphere->PolygonMode = GL_FILL;
+
+	mSphereMaterial = new Material();
+	mSphereMaterial->SetShaderStage("shaders/TextureVertexShader.glsl", GL_VERTEX_SHADER);
+	mSphereMaterial->SetShaderStage("shaders/TextureFragmentShader.glsl", GL_FRAGMENT_SHADER);
+	mSphereMaterial->SetShader();
+
+	mSphereMaterial->BindMeshAttributes(*mSphere, "vertexPosition", NULL, NULL, NULL, NULL);
+	mSphereMaterial->BindUniformAttribute("clip");
+
+	
+}
+
+void SPHFluidSimulation::updateTransforms()
+{
+	int gridsCount = SPH_GRID_X * SPH_GRID_Y * SPH_GRID_Z;
+	for (int i = 0; i < gridsCount; i++) {
+		SPHCell& cell = mSPHGrid[gridsCount];
+		for (int p = 0; p < cell.particles.size(); p++) {
+			mTransforms[i] = cell.particles[p].mTransform.GetWorldTransform();
+		}
+	}
 }
 
 void SPHFluidSimulation::initParticleGrid()
@@ -198,7 +250,6 @@ void SPHFluidSimulation::updateParticlesForces()
 
 					cell.particles[p1].mAcceleration = (fPressure + fViscous + fSurface + fGravity) / cell.particles[p1].mDensity;
 				}
-
 			}
 		}
 	}

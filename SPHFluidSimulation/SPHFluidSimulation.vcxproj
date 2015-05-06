@@ -101,6 +101,7 @@ copy /Y "$(ProjectDir)bin\glew32.dll" "$(TargetDir)glew32.dll"</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\FragmentShader.glsl" />
+    <None Include="shaders\InstanceVertexShader.glsl" />
     <None Include="shaders\TextureFragmentShader.glsl" />
     <None Include="shaders\TextureVertexShader.glsl" />
     <None Include="shaders\VertexShader.glsl" />
