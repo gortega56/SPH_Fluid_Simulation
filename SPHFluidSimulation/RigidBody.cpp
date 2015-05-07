@@ -13,6 +13,17 @@ RigidBody::RigidBody() :
 {
 }
 
+RigidBody::RigidBody(const RigidBody& other) :
+	velocity(other.velocity),
+	angularVelocity(other.angularVelocity),
+	momentum(other.momentum),
+	angularMomentum(other.angularMomentum),
+	spin(other.spin),
+	mass(other.mass),
+	restitution(other.restitution),
+	inertiaTensor(other.inertiaTensor)
+{
+}
 
 RigidBody::~RigidBody()
 {

@@ -11,6 +11,13 @@ Transform::Transform(vec3 position, vec3 rotation, vec3 scale) :
 
 Transform::Transform() : Transform(vec3(0.0f), vec3(0.0f), vec3(1.0f)) {}
 
+Transform::Transform(const Transform& other): 
+	Position(other.Position),
+	Rotation(other.Rotation),
+	Scale(other.Scale),
+	Forward(other.Forward),
+	Right(other.Right),
+	Up(other.Up) {}
 
 Transform::~Transform() {}
 

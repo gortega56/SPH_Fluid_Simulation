@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 
-#define PARTICLE_COUNT			10
+#define PARTICLE_COUNT			2
 #define MESH_COUNT				1
 #define GEOMETRY_COUNT			1
 
@@ -38,7 +38,8 @@ struct SPHParticle
 	float		mDensity;
 	float		mPressure;
 
-	SPHParticle() : mTransform(Transform(vec3(0.0f), vec3(0.0f), vec3(0.5f))), mRigidBody(RigidBody()), mDensity(0.0f) {};
+	SPHParticle() : mTransform(Transform(vec3(0.0f), vec3(0.0f), vec3(0.5f))), mRigidBody(RigidBody()), mAcceleration(vec3(0.0f)), mDensity(0.0f), mPressure(0.0f) {};
+	SPHParticle(const SPHParticle& other) : mTransform(other.mTransform), mRigidBody(other.mRigidBody), mAcceleration(other.mAcceleration), mDensity(other.mDensity), mPressure(other.mPressure) {};
 };
 
 struct SPHCell
@@ -93,13 +94,13 @@ public:
 	void updateParticleGrid();
 	void updateParticlesForces();
 	void updateParticlesPressureDensity();
-	void applyBoundingVolumeForce();
+	void applyBoundingVolumeForce(SPHParticle& particle);
 	void stepSimulation(double secondsElapsed);
 	void integrateCellParticles(double deltaTime);
 
 	// Convenience
 	void  NormalizedGridPosition(vec3 worldPosition, int* indices);
-	
+	int	  SPHGridCellIndex(int x, int y, int z);
 	// Smoothing Kernel Functions
 	float SmoothKernelPoly6(float r2, float h, float h2);
 	float SmoothKernelPoly6Laplacian(float r2, float h, float h2);

@@ -17,6 +17,7 @@ public:
 	vec3 Up;
 
 	Transform(vec3 position, vec3 rotation, vec3 scale);
+	Transform(const Transform& other);
 	Transform();
 	~Transform();
 
