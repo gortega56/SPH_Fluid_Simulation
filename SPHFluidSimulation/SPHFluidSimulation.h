@@ -2,8 +2,33 @@
 #include "Game.h"
 #include "GameObject.h"
 #include "Collider.h"
+#include "Camera.h"
 #include <vector>
 #include <unordered_map>
+
+#define PARTICLE_COUNT			10
+#define MESH_COUNT				1
+#define GEOMETRY_COUNT			1
+
+#define SPH_GRID_X				3
+#define SPH_GRID_Y				3
+#define SPH_GRID_Z				3
+
+#define SPH_CONTAINER_X			5.0f
+#define SPH_CONTAINER_Y			5.0f
+#define SPH_CONTAINER_Z			5.0f
+
+#define SPH_CORE_RADIUS			SPH_CONTAINER_X / SPH_GRID_X
+#define SPH_CORE_RADIUS2		SPH_CORE_RADIUS * SPH_CORE_RADIUS
+
+#define WATER_REST_DENSITY		998.29f
+#define WATER_VAPOR_CONSTANT	3.0f
+#define WATER_VISCOSITY			3.5f
+
+#define SURFACE_TENSION			0.0728f
+#define COLOR_FIELD_THRESHOLD   7.065f
+
+#define GRAVITATIONAL_ACCELERATION	-9.80665f
 
 struct SPHParticle
 {
@@ -13,7 +38,7 @@ struct SPHParticle
 	float		mDensity;
 	float		mPressure;
 
-	SPHParticle() : mTransform(Transform()), mRigidBody(RigidBody()), mDensity(0.0f) {};
+	SPHParticle() : mTransform(Transform(vec3(0.0f), vec3(0.0f), vec3(0.5f))), mRigidBody(RigidBody()), mDensity(0.0f) {};
 };
 
 struct SPHCell
@@ -25,6 +50,7 @@ class SPHFluidSimulation :
 	public Game
 {
 public:
+	GLuint		mTransformBufferID;
 	int			mGameObjectCount;
 	int			mColliderCount;
 	int			mMeshCount;
@@ -44,7 +70,7 @@ public:
 	Material*	mSphereMaterial;
 	Material*	mCubeMaterial;
 
-	mat4x4*		mTransforms;
+	Camera*		mCamera;
 
 	SPHCell* mSPHGrid;
 	unordered_map<int, vector<int>> mSPHCellIndexMap;

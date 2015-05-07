@@ -31,6 +31,7 @@ public:
 
 private:
 	unordered_map<const char*, GLuint>	uniformAttributeMap;
+	unordered_map<const char*, GLuint>  instanceAttributeMap;
 	unordered_map<GLenum, GLuint>		shaderMap;
 	int TextureCount;
 };

@@ -23,7 +23,7 @@ void main()
 	float dLightContribution = clamp(dot(normalize(worldNormal), directionToLight), 0.0, 1.0);
 
 	vec4 diffuseColor = texture2D(tex1, uv);
-
+	diffuseColor = vec4(0,0,1,1);
 	fragmentColor = (dLightContribution * diffuseColor) + dLight.ambientColor;
-	
+
 }

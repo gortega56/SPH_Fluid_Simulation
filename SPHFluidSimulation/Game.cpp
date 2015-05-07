@@ -40,7 +40,7 @@ void Game::init()
 	videoMode = glfwGetVideoMode(monitor);
 
 	//GLFWwindow* window = glfwCreateWindow(videoMode->width, videoMode->height, "Sphere", NULL, NULL);
-	window = glfwCreateWindow(800, 600, title, NULL, NULL);
+	window = glfwCreateWindow(1600, 1200, title, NULL, NULL);
 
 	if (!window) {
 		glfwTerminate();

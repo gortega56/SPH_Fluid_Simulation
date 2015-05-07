@@ -98,7 +98,7 @@ void Material::BindMeshAttributes(const Mesh& mesh, const char* vertexAttribute,
 	if (indexAttribute != NULL) {
 		glBindBuffer(GL_ARRAY_BUFFER, mesh.IndexBufferID);
 		GLuint attributeID = glGetAttribLocation(ShaderID, indexAttribute);
-		glVertexAttribPointer(attributeID, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+		glVertexAttribPointer(attributeID, 1, GL_INT, GL_FALSE, 0, NULL);
 		glEnableVertexAttribArray(attributeID);
 	}
 }

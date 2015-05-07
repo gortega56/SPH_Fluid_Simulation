@@ -4,30 +4,6 @@
 #define _USE_MATH_DEFINES 
 #include <math.h>
 
-#define PARTICLE_COUNT			1
-#define MESH_COUNT				1
-#define GEOMETRY_COUNT			1
-
-#define SPH_GRID_X				3
-#define SPH_GRID_Y				3
-#define SPH_GRID_Z				3
-
-#define SPH_CONTAINER_X			5.0f
-#define SPH_CONTAINER_Y			5.0f
-#define SPH_CONTAINER_Z			5.0f
-
-#define SPH_CORE_RADIUS			SPH_CONTAINER_X / SPH_GRID_X
-#define SPH_CORE_RADIUS2		SPH_CORE_RADIUS * SPH_CORE_RADIUS
-
-#define WATER_REST_DENSITY		998.29f
-#define WATER_VAPOR_CONSTANT	3.0f
-#define WATER_VISCOSITY			3.5f
-
-#define SURFACE_TENSION			0.0728f
-#define COLOR_FIELD_THRESHOLD   7.065f
-
-#define GRAVITATIONAL_ACCELERATION	-9.80665f
-
 SPHFluidSimulation::SPHFluidSimulation() : mGameObjectCount(PARTICLE_COUNT), mColliderCount(PARTICLE_COUNT), mTransformCount(PARTICLE_COUNT), mMeshCount(MESH_COUNT), mRigidBodyCount(PARTICLE_COUNT), mGeometryCount(GEOMETRY_COUNT)
 {
 	// Missing GameObjects for now
@@ -37,15 +13,15 @@ SPHFluidSimulation::SPHFluidSimulation() : mGameObjectCount(PARTICLE_COUNT), mCo
 	mGeometry = new Geometry[mGeometryCount];
 	
 	mSPHGrid = new SPHCell[SPH_GRID_X * SPH_GRID_Y * SPH_GRID_Z];
-	mTransforms = new mat4x4[mTransformCount];
 	mBoundingBox = new GameObject();
+
+	mCamera = new Camera();
 }
 
 
 SPHFluidSimulation::~SPHFluidSimulation()
 {
 	delete[] mColliders;
-	delete[] mTransforms;
 	delete[] mMesh;
 	delete[] mRigidBodies;
 	delete[] mGeometry;
@@ -55,22 +31,46 @@ void SPHFluidSimulation::init()
 {
 	Game::init();
 	initParticleGrid();
+	initGeometry();
 	
-	
+	SPHCell& cell = mSPHGrid[0];
+	for (int i = 0; i < PARTICLE_COUNT; i++) {
+		SPHParticle particle = SPHParticle();
+		particle.mTransform.Position = vec3(SPH_CONTAINER_X - i, SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
+		cell.particles.push_back(particle);
+	}
 }
 
 void SPHFluidSimulation::updateScene(double secondsElapsed)
 {
-	updateParticleGrid();
-	updateParticlesPressureDensity();
-	updateParticlesForces();
-	stepSimulation(secondsElapsed);
+	//updateParticleGrid();
+	//updateParticlesPressureDensity();
+	//updateParticlesForces();
+	//stepSimulation(secondsElapsed);
 	updateTransforms();
 }
 
 void SPHFluidSimulation::renderScene(double secondsElapsed)
 {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glUseProgram(mBoundingBox->material->ShaderID);
 
+	glm::mat4 projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.f);
+	glm::mat4 view = mCamera->GetView();
+
+	glm::mat4 PVM = projection * view * mBoundingBox->transform->GetWorldTransform();
+	glPolygonMode(GL_FRONT_AND_BACK, mBoundingBox->mesh->PolygonMode);
+	glBindVertexArray(mBoundingBox->material->VertexArrayID);
+	glUniformMatrix4fv(mBoundingBox->material->GetUniformAttribute("clip"), 1, GL_FALSE, &PVM[0][0]);
+	glDrawArrays(mBoundingBox->mesh->RenderMode, 0, mBoundingBox->mesh->GetVertexCount());
+
+	glUseProgram(mSphereMaterial->ShaderID);
+	glPolygonMode(GL_FRONT_AND_BACK, mSphere->PolygonMode);
+	glBindVertexArray(mSphereMaterial->VertexArrayID);
+	glUniformMatrix4fv(mSphereMaterial->GetUniformAttribute("view"), 1, GL_FALSE, &view[0][0]);
+	glUniformMatrix4fv(mSphereMaterial->GetUniformAttribute("projection"), 1, GL_FALSE, &projection[0][0]);
+	glDrawArraysInstanced(GL_TRIANGLES, 0, mSphere->GetVertexCount(), PARTICLE_COUNT);
 }
 
 
@@ -98,33 +98,55 @@ void SPHFluidSimulation::initGeometry()
 	mBoundingBox->geometry = cube;
 	mBoundingBox->mesh = mCube;
 	mBoundingBox->material = mCubeMaterial;
+	mBoundingBox->transform = new Transform();
+	mBoundingBox->transform->Scale = { SPH_CONTAINER_X, SPH_CONTAINER_Y, SPH_CONTAINER_Z };
+	mBoundingBox->transform->Position = { SPH_CONTAINER_X / 2, SPH_CONTAINER_Y / 2, -SPH_CONTAINER_Z / 2 };
 
 	// Particle
-	Geometry *sphere = Geometry::Sphere(2, 2);
+	Geometry *sphere = Geometry::Sphere(3, 3);
 	mSphere = new Mesh(*sphere);
 	mSphere->RenderMode = GL_TRIANGLES;
 	mSphere->PolygonMode = GL_FILL;
 
 	mSphereMaterial = new Material();
-	mSphereMaterial->SetShaderStage("shaders/TextureVertexShader.glsl", GL_VERTEX_SHADER);
-	mSphereMaterial->SetShaderStage("shaders/TextureFragmentShader.glsl", GL_FRAGMENT_SHADER);
+	mSphereMaterial->SetShaderStage("shaders/InstanceVertexShader.glsl", GL_VERTEX_SHADER);
+	mSphereMaterial->SetShaderStage("shaders/FragmentShader.glsl", GL_FRAGMENT_SHADER);
 	mSphereMaterial->SetShader();
 
 	mSphereMaterial->BindMeshAttributes(*mSphere, "vertexPosition", NULL, NULL, NULL, NULL);
-	mSphereMaterial->BindUniformAttribute("clip");
+	mSphereMaterial->BindUniformAttribute("projection");
+	mSphereMaterial->BindUniformAttribute("view");
 
-	
+	GLuint modelAttribID = glGetAttribLocation(mSphereMaterial->ShaderID, "model");
+	glGenBuffers(1, &mTransformBufferID);
+	glBindBuffer(GL_ARRAY_BUFFER, mTransformBufferID);
+	glBufferData(GL_ARRAY_BUFFER, PARTICLE_COUNT * sizeof(mat4), NULL, GL_DYNAMIC_DRAW);
+	for (int i = 0; i < 4; i++) {
+		glVertexAttribPointer(modelAttribID + i, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void*)(sizeof(vec4) * i));
+		glEnableVertexAttribArray(modelAttribID + i);
+		glVertexAttribDivisor(modelAttribID + i, 1);
+	}	
+
+	mCamera->transform->Position.x = SPH_CONTAINER_X / 2;
+	mCamera->transform->Position.y = SPH_CONTAINER_Y / 2;
 }
 
 void SPHFluidSimulation::updateTransforms()
 {
+	glBindBuffer(GL_ARRAY_BUFFER, mTransformBufferID);
+	mat4* matrices = (mat4*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+
 	int gridsCount = SPH_GRID_X * SPH_GRID_Y * SPH_GRID_Z;
+	int particleCount = 0;
 	for (int i = 0; i < gridsCount; i++) {
-		SPHCell& cell = mSPHGrid[gridsCount];
+		SPHCell& cell = mSPHGrid[i];
 		for (int p = 0; p < cell.particles.size(); p++) {
-			mTransforms[i] = cell.particles[p].mTransform.GetWorldTransform();
+			cell.particles[p].mTransform.Position.y -= 0.001f * p;
+			matrices[particleCount++] = cell.particles[p].mTransform.GetWorldTransform();
+			printf("POS: %f, %f, %f \n", cell.particles[p].mTransform.Position.x, cell.particles[p].mTransform.Position.y, cell.particles[p].mTransform.Position.z);
 		}
 	}
+	glUnmapBuffer(GL_ARRAY_BUFFER);
 }
 
 void SPHFluidSimulation::initParticleGrid()
@@ -176,7 +198,9 @@ void SPHFluidSimulation::updateParticleGrid()
 					NormalizedGridPosition(cell.particles[p].mTransform.Position, nextCell);
 
 					// TO DO: Will particles leave the grid...
-
+					nextCell[0] = clamp(nextCell[0], 0, SPH_GRID_X - 1);
+					nextCell[1] = clamp(nextCell[1], 0, SPH_GRID_Y - 1);
+					nextCell[2] = clamp(nextCell[2], 0, SPH_GRID_Z - 1);
 					// Check if particle has moved to another grid
 					if (x != nextCell[0] || y != nextCell[1] || z != nextCell[2]) {
 						mSPHGrid[nextCell[0] + (nextCell[1] * SPH_GRID_X) + (nextCell[2] * SPH_GRID_X * SPH_GRID_Y)].particles.push_back(cell.particles[p]);
@@ -184,7 +208,7 @@ void SPHFluidSimulation::updateParticleGrid()
 					}
 				}
 
-				for (int index = indicesToRemove.size() - 1; index <= 0; index--) {
+				for (int index = indicesToRemove.size() - 1; index >= 0; index--) {
 					cell.particles.erase(std::begin(cell.particles) + index);
 				}
 			}
@@ -218,7 +242,7 @@ void SPHFluidSimulation::updateParticlesForces()
 							vec3 rDiff = cell.particles[p1].mTransform.Position - nCell.particles[p2].mTransform.Position;
 							float rDistance = length(rDiff);
 							float rDistance2 = rDistance * rDistance;
-							if (rDistance2 <= SPH_CORE_RADIUS2) {
+							if (0 < rDistance2 && rDistance2 <= SPH_CORE_RADIUS2) {
 								// Pressure Force 
 								float symmetricPressure = (cell.particles[p1].mPressure + nCell.particles[p2].mPressure) / (2 * nCell.particles[p2].mDensity);
 								vec3 pGradient = SmoothKernelSpikyGradient(rDiff, rDistance, SPH_CORE_RADIUS);
@@ -247,8 +271,9 @@ void SPHFluidSimulation::updateParticlesForces()
 					if (CFNLength > COLOR_FIELD_THRESHOLD) {
 						fSurface = -SURFACE_TENSION * colorFieldLaplacian * (colorFieldNormal / CFNLength);
 					}
+					cell.particles[p1].mAcceleration = vec3(0, GRAVITATIONAL_ACCELERATION, 0);
 
-					cell.particles[p1].mAcceleration = (fPressure + fViscous + fSurface + fGravity) / cell.particles[p1].mDensity;
+				//	cell.particles[p1].mAcceleration = (fPressure + fViscous + fSurface + fGravity) / cell.particles[p1].mDensity;
 				}
 			}
 		}
@@ -339,8 +364,11 @@ void SPHFluidSimulation::integrateCellParticles(double deltaTime)
 				
 				SPHCell& cell = mSPHGrid[x + (y * SPH_GRID_X) + (z * SPH_GRID_X * SPH_GRID_Y)];
 				for (SPHParticle particle : cell.particles) {
+					
 					particle.mRigidBody.velocity += particle.mAcceleration * (float)deltaTime;
 					particle.mTransform.Position += particle.mRigidBody.velocity * (float)deltaTime;
+					printf("ACCL: %f %f %f\n", particle.mAcceleration.x, particle.mAcceleration.y, particle.mAcceleration.z);
+					//printf("POS: %f %f %f\n", particle.mTransform.Position.x, particle.mTransform.Position.y, particle.mTransform.Position.z);
 				}
 			}
 		}
