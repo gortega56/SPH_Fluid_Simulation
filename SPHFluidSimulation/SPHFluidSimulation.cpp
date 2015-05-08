@@ -177,6 +177,7 @@ void SPHFluidSimulation::updateParticleGrid()
 				vector<int> indicesToRemove;
 				for (int p = 0; p < cell.particles.size(); p++) {
 					int nextCell[3];
+					printf("P%i pPOS: %i %i %i\n", p, x, y, z);
 					NormalizedGridPosition(cell.particles[p].mTransform.Position, nextCell);
 					printf("P%i nPOS: %i %i %i\n", p, nextCell[0], nextCell[1], nextCell[2]);
 					// TO DO: Will particles leave the grid...
@@ -225,7 +226,7 @@ void SPHFluidSimulation::updateParticlesPressureDensity()
 							float rDistance2 = rDistance * rDistance;
 							if (rDistance2 <= SPH_CORE_RADIUS2) {
 								// Accumulate density from neighboring particles
-								pDensity += cell.particles[p1].mRigidBody.mass * SmoothKernelPoly6(rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
+								pDensity += SmoothKernelPoly6(rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
 							}
 						}
 					}
@@ -318,24 +319,24 @@ void SPHFluidSimulation::applyBoundingVolumeForce(SPHParticle& particle)
 	vec3 boundingBoxMax = vec3(SPH_CONTAINER_X, SPH_CONTAINER_Y, 0.0f);
 
 	if (particle.mTransform.Position.x < boundingBoxMin.x && particle.mRigidBody.velocity.x < 0) {
-		particle.mRigidBody.velocity.x *= -1;
+		particle.mRigidBody.velocity.x *= -SPH_CONTAINER_DAMPING;
 	}
 	else if (particle.mTransform.Position.x > boundingBoxMax.x && particle.mRigidBody.velocity.x > 0) {
-		particle.mRigidBody.velocity.x *= -1;
+		particle.mRigidBody.velocity.x *= -SPH_CONTAINER_DAMPING;
 	}
 
 	if (particle.mTransform.Position.y < boundingBoxMin.y && particle.mRigidBody.velocity.y < 0) {
-		particle.mRigidBody.velocity.y *= -1;
+		particle.mRigidBody.velocity.y *= -SPH_CONTAINER_DAMPING;
 	}
 	else if (particle.mTransform.Position.y > boundingBoxMax.y && particle.mRigidBody.velocity.y > 0) {
-		particle.mRigidBody.velocity.y *= -1;
+		particle.mRigidBody.velocity.y *= -SPH_CONTAINER_DAMPING;
 	}
 
 	if (particle.mTransform.Position.z < boundingBoxMin.z && particle.mRigidBody.velocity.z < 0) {
-		particle.mRigidBody.velocity.z *= -1;
+		particle.mRigidBody.velocity.z *= -SPH_CONTAINER_DAMPING;
 	}
 	else if (particle.mTransform.Position.z > boundingBoxMax.z && particle.mRigidBody.velocity.z > 0) {
-		particle.mRigidBody.velocity.z *= -1;
+		particle.mRigidBody.velocity.z *= -SPH_CONTAINER_DAMPING;
 	}
 }
 
@@ -377,7 +378,7 @@ void SPHFluidSimulation::integrateCellParticles(double deltaTime)
 				SPHCell& cell = mSPHGrid[SPHGridCellIndex(x, y, z)];
 				for (int p = 0; p < cell.particles.size(); p++) {
 					
-					cell.particles[p].mRigidBody.velocity += cell.particles[p].mAcceleration * (float)deltaTime;// *(0.001f);
+					cell.particles[p].mRigidBody.velocity += cell.particles[p].mAcceleration * (float)deltaTime;// *(0.01f);
 					cell.particles[p].mTransform.Position += cell.particles[p].mRigidBody.velocity * (float)deltaTime;
 					printf("P%i A: %f %f %f\n", p, cell.particles[p].mAcceleration.x, cell.particles[p].mAcceleration.y, cell.particles[p].mAcceleration.z);
 					printf("P%i POS: %f %f %f\n", p, cell.particles[p].mTransform.Position.x, cell.particles[p].mTransform.Position.y, cell.particles[p].mTransform.Position.z);

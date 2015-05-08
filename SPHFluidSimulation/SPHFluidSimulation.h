@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 
-#define PARTICLE_COUNT			2
+#define PARTICLE_COUNT			1
 #define MESH_COUNT				1
 #define GEOMETRY_COUNT			1
 
@@ -29,6 +29,8 @@
 #define COLOR_FIELD_THRESHOLD   7.065f
 
 #define GRAVITATIONAL_ACCELERATION	-9.80665f
+
+#define SPH_CONTAINER_DAMPING	1.0f;
 
 struct SPHParticle
 {
