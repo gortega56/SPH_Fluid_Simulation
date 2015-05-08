@@ -48,5 +48,8 @@ void Camera::setRotation(float yaw, float pitch, float roll)
 
 mat4 Camera::GetView()
 {
-	return lookAt(transform->Position, transform->Position + transform->Forward, transform->Up);
+	mat3 worldRotation = (mat3)transform->GetRotationTransform();
+	vec3 worldForward = worldRotation * transform->Forward;
+	vec3 worldUp = worldRotation * transform->Up;
+	return lookAt(transform->Position, transform->Position + worldForward, worldUp);
 }

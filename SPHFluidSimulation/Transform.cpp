@@ -21,6 +21,45 @@ Transform::Transform(const Transform& other):
 
 Transform::~Transform() {}
 
+void Transform::MoveForward()
+{
+	vec3 worldForward = (mat3)GetRotationTransform() * Forward;
+	Position += worldForward;
+}
+
+void Transform::MoveBackward()
+{
+	vec3 worldForward = (mat3)GetRotationTransform() * Forward;
+	Position -= worldForward;
+}
+void Transform::MoveRight()
+{
+	mat3 worldRotation = (mat3)GetRotationTransform();
+	vec3 worldForward = worldRotation * Forward;
+	vec3 worldUp = worldRotation * Up;
+	Position += cross(Forward, Up);
+}
+
+void Transform::MoveLeft()
+{
+	mat3 worldRotation = (mat3)GetRotationTransform();
+	vec3 worldForward = worldRotation * Forward;
+	vec3 worldUp = worldRotation * Up;
+	Position -= cross(Forward, Up);
+}
+
+void Transform::MoveUp()
+{
+	vec3 worldUp = (mat3)GetRotationTransform() * Up;
+	Position += worldUp;
+}
+
+void Transform::MoveDown()
+{
+	vec3 worldUp = (mat3)GetRotationTransform() * Up;
+	Position -= worldUp;
+}
+
 mat4 Transform::GetWorldTransform()
 {
 	mat4 identity = mat4(1.0f);

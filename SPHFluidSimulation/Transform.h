@@ -21,6 +21,13 @@ public:
 	Transform();
 	~Transform();
 
+	void MoveForward();
+	void MoveBackward();
+	void MoveRight();
+	void MoveLeft();
+	void MoveUp();
+	void MoveDown();
+
 	mat4 GetWorldTransform();
 	mat4 GetRotationTransform();
 };
