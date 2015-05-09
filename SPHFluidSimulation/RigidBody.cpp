@@ -7,7 +7,7 @@ RigidBody::RigidBody() :
 	momentum({ 0.0f, 0.0f, 0.0f }), 
 	angularMomentum({ 0.0f, 0.0f, 0.0f }),
 	spin({ 0.0f, 0.0f, 0.0f, 1.0f }),
-	mass(0.02f),
+	mass(1.0f),
 	restitution(0.2f),
 	inertiaTensor(mat3(1.0f))
 {

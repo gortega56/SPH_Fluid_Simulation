@@ -6,13 +6,13 @@
 #include <vector>
 #include <unordered_map>
 
-#define PARTICLE_COUNT			1
+#define PARTICLE_COUNT			2
 #define MESH_COUNT				1
 #define GEOMETRY_COUNT			1
 
-#define SPH_GRID_X				3
-#define SPH_GRID_Y				3
-#define SPH_GRID_Z				3
+#define SPH_GRID_X				5
+#define SPH_GRID_Y				5
+#define SPH_GRID_Z				5
 
 #define SPH_CONTAINER_X			5.0f
 #define SPH_CONTAINER_Y			5.0f
@@ -26,7 +26,7 @@
 #define WATER_VISCOSITY			3.5f
 
 #define SURFACE_TENSION			0.0728f
-#define COLOR_FIELD_THRESHOLD   7.065f
+#define COLOR_FIELD_THRESHOLD   0.02f
 
 #define GRAVITATIONAL_ACCELERATION	-9.80665f
 
@@ -77,6 +77,8 @@ public:
 
 	SPHCell* mSPHGrid;
 	unordered_map<int, vector<int>> mSPHCellIndexMap;
+
+	bool Play;
 
 	SPHFluidSimulation();
 	~SPHFluidSimulation();
