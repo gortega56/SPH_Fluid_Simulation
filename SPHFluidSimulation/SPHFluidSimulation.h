@@ -6,9 +6,13 @@
 #include <vector>
 #include <unordered_map>
 
-#define PARTICLE_COUNT			2
+#define PARTICLE_COUNT			3
+#define PARTICLE_SCALE			0.5f
+#define PARTICLE_RADIUS			PARTICLE_SCALE * 0.5f
 #define MESH_COUNT				1
 #define GEOMETRY_COUNT			1
+
+#define PARTICLE_TERMINAL_VELOCITY
 
 #define SPH_GRID_X				5
 #define SPH_GRID_Y				5
@@ -30,7 +34,7 @@
 
 #define GRAVITATIONAL_ACCELERATION	-9.80665f
 
-#define SPH_CONTAINER_DAMPING	1.0f;
+#define SPH_CONTAINER_DAMPING	0.75f;
 
 struct SPHParticle
 {
@@ -40,7 +44,7 @@ struct SPHParticle
 	float		mDensity;
 	float		mPressure;
 
-	SPHParticle() : mTransform(Transform(vec3(0.0f), vec3(0.0f), vec3(0.5f))), mRigidBody(RigidBody()), mAcceleration(vec3(0.0f)), mDensity(0.0f), mPressure(0.0f) {};
+	SPHParticle() : mTransform(Transform(vec3(0.0f), vec3(0.0f), vec3(PARTICLE_SCALE))), mRigidBody(RigidBody()), mAcceleration(vec3(0.0f)), mDensity(0.0f), mPressure(0.0f) {};
 	SPHParticle(const SPHParticle& other) : mTransform(other.mTransform), mRigidBody(other.mRigidBody), mAcceleration(other.mAcceleration), mDensity(other.mDensity), mPressure(other.mPressure) {};
 };
 
@@ -100,7 +104,8 @@ public:
 	void updateParticlesPressureDensity();
 	void applyBoundingVolumeForce(SPHParticle& particle);
 	void stepSimulation(double secondsElapsed);
-	void integrateCellParticles(double deltaTime);
+	void EulerIntegrationStep(double deltaTime);
+	void VerletIntegrationStep(double deltaTime);
 
 	// Convenience
 	void  NormalizedGridPosition(vec3 worldPosition, int* indices);
