@@ -6,35 +6,45 @@
 #include <vector>
 #include <unordered_map>
 
-#define PARTICLE_COUNT			3
-#define PARTICLE_SCALE			0.5f
-#define PARTICLE_RADIUS			PARTICLE_SCALE * 0.5f
-#define MESH_COUNT				1
-#define GEOMETRY_COUNT			1
+#define MESH_COUNT							1
+#define GEOMETRY_COUNT						1
 
-#define PARTICLE_TERMINAL_VELOCITY
+#define SPH_CORE_RADIUS						0.045f
+#define SPH_CORE_RADIUS2					SPH_CORE_RADIUS * SPH_CORE_RADIUS
 
-#define SPH_GRID_X				5
-#define SPH_GRID_Y				5
-#define SPH_GRID_Z				5
+#define SPH_CONTAINER_X						0.2f
+#define SPH_CONTAINER_Y						0.2f
+#define SPH_CONTAINER_Z						0.2f
 
-#define SPH_CONTAINER_X			5.0f
-#define SPH_CONTAINER_Y			5.0f
-#define SPH_CONTAINER_Z			5.0f
+#define SPH_GRID_X							(int)std::ceil(SPH_CONTAINER_X / SPH_CORE_RADIUS)
+#define SPH_GRID_Y							(int)std::ceil(SPH_CONTAINER_Y / SPH_CORE_RADIUS)
+#define SPH_GRID_Z							(int)std::ceil(SPH_CONTAINER_Z / SPH_CORE_RADIUS)
+#define SPH_GRID_COUNT						SPH_GRID_X * SPH_GRID_Y * SPH_GRID_Z
 
-#define SPH_CORE_RADIUS			SPH_CONTAINER_X / SPH_GRID_X
-#define SPH_CORE_RADIUS2		SPH_CORE_RADIUS * SPH_CORE_RADIUS
+#define PARTICLE_SCALE						0.03f
+#define PARTICLE_RADIUS						PARTICLE_SCALE * 0.5f
 
-#define WATER_REST_DENSITY		998.29f
-#define WATER_VAPOR_CONSTANT	3.0f
-#define WATER_VISCOSITY			3.5f
+#define SPH_CELL_PARTICLES_X				std::floor(SPH_CONTAINER_X / PARTICLE_SCALE) //* 0.5f
+#define SPH_CELL_PARTICLES_Y				std::floor(SPH_CONTAINER_Y / PARTICLE_SCALE)
+#define SPH_CELL_PARTICLES_Z				std::floor(SPH_CONTAINER_Z / PARTICLE_SCALE)
 
-#define SURFACE_TENSION			0.0728f
-#define COLOR_FIELD_THRESHOLD   0.02f
 
-#define GRAVITATIONAL_ACCELERATION	-9.80665f
 
-#define SPH_CONTAINER_DAMPING	0.75f;
+#define PARTICLE_COUNT						SPH_CELL_PARTICLES_X * SPH_CELL_PARTICLES_Y *SPH_CELL_PARTICLES_Z
+
+
+
+#define WATER_REST_DENSITY					998.29f
+#define WATER_VAPOR_CONSTANT				3.0f
+#define WATER_VISCOSITY						3.5f
+
+#define SURFACE_TENSION						0.0728f
+#define COLOR_FIELD_THRESHOLD				7.065f
+
+#define GRAVITATIONAL_ACCELERATION			-9.80665f
+
+#define SPH_CONTAINER_SPRING_CONSTANT		100.0f
+#define SPH_CONTAINER_DAMPING				-0.9f
 
 struct SPHParticle
 {
@@ -82,6 +92,8 @@ public:
 	SPHCell* mSPHGrid;
 	unordered_map<int, vector<int>> mSPHCellIndexMap;
 
+	SPHParticle* mSPHParticles;
+
 	bool Play;
 
 	SPHFluidSimulation();
@@ -100,6 +112,7 @@ public:
 	// Simulation Methods
 	void initParticleGrid();
 	void updateParticleGrid();
+	void UpdateParticleGrid();
 	void updateParticlesForces();
 	void updateParticlesPressureDensity();
 	void applyBoundingVolumeForce(SPHParticle& particle);

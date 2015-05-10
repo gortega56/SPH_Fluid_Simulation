@@ -13,6 +13,8 @@ SPHFluidSimulation::SPHFluidSimulation() : mGameObjectCount(PARTICLE_COUNT), mCo
 	mGeometry = new Geometry[mGeometryCount];
 	
 	mSPHGrid = new SPHCell[SPH_GRID_X * SPH_GRID_Y * SPH_GRID_Z];
+	mSPHParticles = new SPHParticle[PARTICLE_COUNT];
+
 	mBoundingBox = new GameObject();
 
 	mCamera = new Camera();
@@ -35,32 +37,45 @@ void SPHFluidSimulation::init()
 	initGeometry();
 	
 	SPHCell& cell = mSPHGrid[0];
-	int particlesPerX = std::floor(SPH_CONTAINER_X / PARTICLE_RADIUS);
-	int particlesPerY = std::floor(SPH_CONTAINER_Y / PARTICLE_RADIUS);
-	int particlesPerZ = std::floor(SPH_CONTAINER_Z / PARTICLE_RADIUS);
 
 	//for (int i = 0; i < PARTICLE_COUNT; i++) {
-	//	SPHParticle particle = SPHParticle();
+	//	SPHParticle& particle = mSPHParticles[i];
 	//	particle.mTransform.Position = vec3(SPH_CONTAINER_X - (i * 0.5f), SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
 	//	cell.particles.push_back(particle);
 	//}
 
-	SPHParticle particle1 = SPHParticle();
-	particle1.mTransform.Position = vec3(SPH_CONTAINER_X, SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
-	cell.particles.push_back(particle1);
+	//SPHParticle& particle1 = mSPHParticles[0];
+	//particle1.mTransform.Position = vec3(SPH_CONTAINER_X, SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
+	//cell.particles.push_back(particle1);
 
-	SPHParticle particle2 = SPHParticle();
-	particle2.mTransform.Position = vec3(SPH_CONTAINER_X * 0.5f, SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
-	cell.particles.push_back(particle2);
+	//SPHParticle& particle2 = mSPHParticles[1];
+	//particle2.mTransform.Position = vec3(SPH_CONTAINER_X * 0.5f, SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
+	//cell.particles.push_back(particle2);
 
-	SPHParticle particle3 = SPHParticle();
-	particle3.mTransform.Position = vec3(0, SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
-	cell.particles.push_back(particle3);
+	//SPHParticle& particle3 = mSPHParticles[2];
+	//particle3.mTransform.Position = vec3(0, SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
+	//cell.particles.push_back(particle3);
+
+	 int p = 0;
+	for (int x = 0; x < SPH_CELL_PARTICLES_X; x++) {
+		for (int y = 0; y < SPH_CELL_PARTICLES_Y; y++) {
+			for (int z = 0; z < SPH_CELL_PARTICLES_Z; z++) {
+				int i = x + (y * SPH_CELL_PARTICLES_X) + (z * SPH_CELL_PARTICLES_X * SPH_CELL_PARTICLES_Y);
+				SPHParticle& particle = mSPHParticles[i];
+				particle.mTransform.Position = vec3(PARTICLE_SCALE * x + PARTICLE_RADIUS, PARTICLE_SCALE * y + PARTICLE_RADIUS, -PARTICLE_SCALE * z - PARTICLE_RADIUS);
+				cell.particles.push_back(particle);
+				p++;
+			}
+		}
+	}
+
+	printf("NUM P: %i", p);
 }
 
 void SPHFluidSimulation::updateScene(double secondsElapsed)
 {
-	updateParticleGrid();
+	//updateParticleGrid();
+	UpdateParticleGrid();
 	updateParticlesPressureDensity();
 	updateParticlesForces();
 	stepSimulation(secondsElapsed);
@@ -214,10 +229,6 @@ void SPHFluidSimulation::initParticleGrid()
 
 void SPHFluidSimulation::updateParticleGrid()
 {
-	float halfContainerX = (SPH_CONTAINER_X * 0.5f);
-	float halfContainerY = (SPH_CONTAINER_Y * 0.5f);
-	float halfContainerZ = (SPH_CONTAINER_Z * 0.5f);
-
 	for (int x = 0; x < SPH_GRID_X; x++) {
 		for (int y = 0; y < SPH_GRID_Y; y++) {
 			for (int z = 0; z < SPH_GRID_Z; z++) {
@@ -235,18 +246,36 @@ void SPHFluidSimulation::updateParticleGrid()
 					// Check if particle has moved to another grid
 					if (x != nextCell[0] || y != nextCell[1] || z != nextCell[2]) {
 						mSPHGrid[SPHGridCellIndex(nextCell[0], nextCell[1], nextCell[2])].particles.push_back(cell.particles[p]);
-						printf("C%i P%i Added\n", SPHGridCellIndex(nextCell[0], nextCell[1], nextCell[2]), mSPHGrid[SPHGridCellIndex(nextCell[0], nextCell[1], nextCell[2])].particles.size() - 1);
 						indicesToRemove.push_back(p);
 					}
 
 				}
 
 				for (int index = indicesToRemove.size() - 1; index >= 0; index--) {
-					printf("C%i P%i Removed\n", SPHGridCellIndex(x, y, z), index);
 					cell.particles.erase(std::begin(cell.particles) + index);
 				}
 			}
 		}
+	}
+}
+
+void SPHFluidSimulation::UpdateParticleGrid()
+{
+	for (int cIndex = 0; cIndex < SPH_GRID_COUNT; cIndex++)
+	{
+		SPHCell& cell = mSPHGrid[cIndex];
+		cell.particles.clear();
+	}
+
+	for (int pIndex = 0; pIndex < PARTICLE_COUNT; pIndex++)
+	{
+		int cellIndices[3];
+		NormalizedGridPosition(mSPHParticles[pIndex].mTransform.Position, cellIndices);
+		cellIndices[0] = clamp(cellIndices[0], 0, SPH_GRID_X - 1);
+		cellIndices[1] = clamp(cellIndices[1], 0, SPH_GRID_Y - 1);
+		cellIndices[2] = clamp(cellIndices[2], 0, SPH_GRID_Z - 1);
+		SPHCell& cell = mSPHGrid[SPHGridCellIndex(cellIndices[0], cellIndices[1], cellIndices[2])];
+		cell.particles.push_back(mSPHParticles[pIndex]);
 	}
 }
 
@@ -264,7 +293,6 @@ void SPHFluidSimulation::updateParticlesPressureDensity()
 				// Update each particle
 				for (int p1 = 0; p1 < cell.particles.size(); p1++) {
 
-					// Start density as value of particle compared with self
 					float pDensity = 0.0f;
 
 					// Against all neighboring cell particles
@@ -284,8 +312,8 @@ void SPHFluidSimulation::updateParticlesPressureDensity()
 					cell.particles[p1].mPressure = WATER_VAPOR_CONSTANT * (pDensity - WATER_REST_DENSITY);
 					cell.particles[p1].mDensity = pDensity;
 
-				//	printf("C%i P%i D: %f\n", index, p1, cell.particles[p1].mDensity);
-				//	printf("C%i P%i P: %f\n", index, p1, cell.particles[p1].mPressure);
+				/*	printf("C%i P%i D: %f\n", index, p1, cell.particles[p1].mDensity);
+					printf("C%i P%i P: %f\n", index, p1, cell.particles[p1].mPressure);*/
 				}
 			}
 		}
@@ -355,16 +383,15 @@ void SPHFluidSimulation::updateParticlesForces()
 					if (CFNLength > COLOR_FIELD_THRESHOLD) {
 						fSurface = -SURFACE_TENSION * colorFieldLaplacian * (colorFieldNormal / CFNLength);
 					}
-					/*printf("C%i P%i fP: %f %f %f\n", index, p1, fPressure.x, fPressure.y, fPressure.z);
-					printf("C%i P%i fV: %f %f %f\n", index, p1, fViscous.x, fViscous.y, fViscous.z);
-
-						printf("C%i P%i fS: %f %f %f\n", index, p1, fSurface.x, fSurface.y, fSurface.z);
-
-
-					printf("C%i P%i fG: %f %f %f\n", index, p1, fGravity.x, fGravity.y, fGravity.z);*/
+					
 
 					cell.particles[p1].mAcceleration = (fPressure + fViscous + fSurface + fGravity) / cell.particles[p1].mDensity;
-				//	printf("C%i P%i A: %f %f %f\n\n", index, p1, cell.particles[p1].mAcceleration.x, cell.particles[p1].mAcceleration.y, cell.particles[p1].mAcceleration.z);
+				
+				/*	printf("C%i P%i fP: %f %f %f\n", index, p1, fPressure.x, fPressure.y, fPressure.z);
+					printf("C%i P%i fV: %f %f %f\n", index, p1, fViscous.x, fViscous.y, fViscous.z);
+					printf("C%i P%i fS: %f %f %f\n", index, p1, fSurface.x, fSurface.y, fSurface.z);
+					printf("C%i P%i fG: %f %f %f\n", index, p1, fGravity.x, fGravity.y, fGravity.z);
+					printf("C%i P%i A: %f %f %f\n\n", index, p1, cell.particles[p1].mAcceleration.x, cell.particles[p1].mAcceleration.y, cell.particles[p1].mAcceleration.z);*/
 
 					applyBoundingVolumeForce(cell.particles[p1]);
 				}
@@ -379,57 +406,39 @@ void SPHFluidSimulation::applyBoundingVolumeForce(SPHParticle& particle)
 {
 	// Check if the object is outside of the box AND still continuing in the same direction
 	vec3 boundingBoxMin = vec3(PARTICLE_RADIUS, PARTICLE_RADIUS, PARTICLE_RADIUS - SPH_CONTAINER_Z);
-	vec3 boundingBoxMax = vec3(SPH_CONTAINER_X - PARTICLE_RADIUS, SPH_CONTAINER_Y - PARTICLE_RADIUS, PARTICLE_RADIUS);
+	vec3 boundingBoxMax = vec3(SPH_CONTAINER_X - PARTICLE_RADIUS, SPH_CONTAINER_Y - PARTICLE_RADIUS, -PARTICLE_RADIUS);
 
 	if (particle.mTransform.Position.x < boundingBoxMin.x && particle.mRigidBody.velocity.x <= 0) {
-		if (particle.mRigidBody.velocity.x == 0) {
-			particle.mAcceleration.x += 100;
-		}
-		else {
-			particle.mRigidBody.velocity.x *= -SPH_CONTAINER_DAMPING;
-		}
+		vec3 containerNormal = vec3(1.0f, 0.0f, 0.0f);
+		particle.mAcceleration += SPH_CONTAINER_SPRING_CONSTANT * containerNormal;
+		particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
 	}
 	else if (particle.mTransform.Position.x > boundingBoxMax.x && particle.mRigidBody.velocity.x >= 0) {
-		if (particle.mRigidBody.velocity.x == 0) {
-			particle.mAcceleration.x -= 100;
-		}
-		else {
-			particle.mRigidBody.velocity.x *= -SPH_CONTAINER_DAMPING;
-		}
+		vec3 containerNormal = vec3(-1.0f, 0.0f, 0.0f);
+		particle.mAcceleration += SPH_CONTAINER_SPRING_CONSTANT * containerNormal;
+		particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
 	}
 
 	if (particle.mTransform.Position.y < boundingBoxMin.y && particle.mRigidBody.velocity.y <= 0) {
-		if (particle.mRigidBody.velocity.y == 0) {
-			particle.mAcceleration.y += 100;
-		}
-		else {
-			particle.mRigidBody.velocity.y *= -SPH_CONTAINER_DAMPING;
-		}
+		vec3 containerNormal = vec3(0.0f, 1.0f, 0.0f);
+		particle.mAcceleration += SPH_CONTAINER_SPRING_CONSTANT * containerNormal;
+		particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
 	}
 	else if (particle.mTransform.Position.y > boundingBoxMax.y && particle.mRigidBody.velocity.y >= 0) {
-		if (particle.mRigidBody.velocity.y == 0) {
-			particle.mAcceleration.y -= 100;
-		}
-		else {
-			particle.mRigidBody.velocity.y *= -SPH_CONTAINER_DAMPING;
-		}
+		vec3 containerNormal = vec3(0.0f, -1.0f, 0.0f);
+		particle.mAcceleration += SPH_CONTAINER_SPRING_CONSTANT * containerNormal;
+		particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
 	}
 
 	if (particle.mTransform.Position.z < boundingBoxMin.z && particle.mRigidBody.velocity.z <= 0) {
-		if (particle.mRigidBody.velocity.z == 0) {
-			particle.mAcceleration.z += 100;
-		}
-		else {
-			particle.mRigidBody.velocity.z *= -SPH_CONTAINER_DAMPING;
-		}
+		vec3 containerNormal = vec3(0.0f, 0.0f, 1.0f);
+		particle.mAcceleration += SPH_CONTAINER_SPRING_CONSTANT * containerNormal;
+		particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
 	}
 	else if (particle.mTransform.Position.z > boundingBoxMax.z && particle.mRigidBody.velocity.z >= 0) {
-		if (particle.mRigidBody.velocity.z == 0) {
-			particle.mAcceleration.z -= 100;
-		}
-		else {
-			particle.mRigidBody.velocity.z *= -SPH_CONTAINER_DAMPING;
-		}
+		vec3 containerNormal = vec3(0.0f, 0.0f, -1.0f);
+		particle.mAcceleration += SPH_CONTAINER_SPRING_CONSTANT * containerNormal;
+		particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
 	}
 }
 
@@ -492,7 +501,7 @@ void SPHFluidSimulation::VerletIntegrationStep(double deltaTime)
 			vec3 previousPosition = cell.particles[p].mTransform.Position;
 			vec3 previousVelocity = cell.particles[p].mRigidBody.velocity;
 
-			cell.particles[p].mTransform.Position = previousPosition + (previousVelocity * (float)deltaTime) + (cell.particles[p].mAcceleration * (float)deltaTime * (float)deltaTime);
+			cell.particles[p].mTransform.Position = previousPosition + (previousVelocity * (float)deltaTime) + (cell.particles[p].mAcceleration * (float)deltaTime * (float)deltaTime) * 0.1f;
 			cell.particles[p].mRigidBody.velocity = (cell.particles[p].mTransform.Position - previousPosition) / (float)deltaTime;
 			//printf("C%i P%i POS: %f %f %f\n", i, p, cell.particles[p].mTransform.Position.x, cell.particles[p].mTransform.Position.y, cell.particles[p].mTransform.Position.z);
 		}
@@ -518,13 +527,12 @@ void SPHFluidSimulation::updateTransforms()
 			for (int z = 0; z < SPH_GRID_Z; z++) {
 				SPHCell& cell = mSPHGrid[SPHGridCellIndex(x, y, z)];
 				for (int p = 0; p < cell.particles.size(); p++) {
-					matrices[particleCount++] = cell.particles[p].mTransform.GetWorldTransform();
+					matrices[particleCount] = cell.particles[p].mTransform.GetWorldTransform();
+					mSPHParticles[particleCount++] = cell.particles[p];
 				}
 			}
 		}
 	}
-	printf("PC: %i", particleCount);
-
 
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 }
