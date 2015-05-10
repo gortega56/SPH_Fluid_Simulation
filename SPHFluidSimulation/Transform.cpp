@@ -37,7 +37,7 @@ void Transform::MoveRight()
 	mat3 worldRotation = (mat3)GetRotationTransform();
 	vec3 worldForward = worldRotation * Forward;
 	vec3 worldUp = worldRotation * Up;
-	Position += cross(Forward, Up);
+	Position += cross(worldForward, worldUp);
 }
 
 void Transform::MoveLeft()
@@ -45,7 +45,7 @@ void Transform::MoveLeft()
 	mat3 worldRotation = (mat3)GetRotationTransform();
 	vec3 worldForward = worldRotation * Forward;
 	vec3 worldUp = worldRotation * Up;
-	Position -= cross(Forward, Up);
+	Position -= cross(worldForward, worldUp);
 }
 
 void Transform::MoveUp()
