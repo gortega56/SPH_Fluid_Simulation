@@ -28,6 +28,10 @@ SPHFluidSimulation::~SPHFluidSimulation()
 	delete[] mMesh;
 	delete[] mRigidBodies;
 	delete[] mGeometry;
+	delete[] mSPHGrid;
+	delete[] mSPHParticles;
+	delete mCamera;
+	delete mBoundingBox;
 }
 
 void SPHFluidSimulation::init()
@@ -373,6 +377,8 @@ void SPHFluidSimulation::updateParticlesForces()
 						}
 					}	
 
+				//	printf("C%i P%i CFN: %f %f %f\n", index, p1, colorFieldNormal.x, colorFieldNormal.y, colorFieldNormal.z);
+
 					fPressure *= -1;
 					fViscous *= WATER_VISCOSITY;
 					fSurface = vec3(0.0f);
@@ -380,10 +386,12 @@ void SPHFluidSimulation::updateParticlesForces()
 
 					// Finish up force calculations
 					float CFNLength = length(colorFieldNormal);
+				//	printf("CFN LENGTH: %f\n", CFNLength);
 					if (CFNLength > COLOR_FIELD_THRESHOLD) {
 						fSurface = -SURFACE_TENSION * colorFieldLaplacian * (colorFieldNormal / CFNLength);
 					}
 					
+
 
 					cell.particles[p1].mAcceleration = (fPressure + fViscous + fSurface + fGravity) / cell.particles[p1].mDensity;
 				
@@ -453,20 +461,17 @@ void SPHFluidSimulation::stepSimulation(double secondsElapsed)
 
 	double accumulator = 0.0;
 
-	double newTime = secondsElapsed;
-
-	double frameTime = newTime - currentTime;
-	if (frameTime > 0.01)
+	double frameTime = secondsElapsed - currentTime;
+	if (frameTime > 0.25)
 	{
-		frameTime = 0.01;
+		frameTime = 0.25;
 	}
 
-	currentTime = newTime;
+	currentTime = secondsElapsed;
 	accumulator += frameTime;
 
 	while (accumulator >= dt)
 	{
-		//integrateCellParticles(dt);
 		VerletIntegrationStep(dt);
 		t += dt;
 		accumulator -= dt;
@@ -501,7 +506,7 @@ void SPHFluidSimulation::VerletIntegrationStep(double deltaTime)
 			vec3 previousPosition = cell.particles[p].mTransform.Position;
 			vec3 previousVelocity = cell.particles[p].mRigidBody.velocity;
 
-			cell.particles[p].mTransform.Position = previousPosition + (previousVelocity * (float)deltaTime) + (cell.particles[p].mAcceleration * (float)deltaTime * (float)deltaTime) * 0.1f;
+			cell.particles[p].mTransform.Position = previousPosition + (previousVelocity * (float)deltaTime) + (cell.particles[p].mAcceleration * (float)deltaTime * (float)deltaTime) * 0.01f;
 			cell.particles[p].mRigidBody.velocity = (cell.particles[p].mTransform.Position - previousPosition) / (float)deltaTime;
 			//printf("C%i P%i POS: %f %f %f\n", i, p, cell.particles[p].mTransform.Position.x, cell.particles[p].mTransform.Position.y, cell.particles[p].mTransform.Position.z);
 		}
@@ -548,7 +553,6 @@ int	SPHFluidSimulation::SPHGridCellIndex(int x, int y, int z)
 {
 	return x + (y * SPH_GRID_X) + (z * SPH_GRID_X * SPH_GRID_Y);
 }
-
 
 float SPHFluidSimulation::SmoothKernelPoly6(float r2, float h, float h2)
 {
