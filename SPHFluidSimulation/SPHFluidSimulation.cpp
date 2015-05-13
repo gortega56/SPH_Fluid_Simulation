@@ -172,7 +172,7 @@ void SPHFluidSimulation::initGeometry()
 
 	// Particle
 	Geometry *sphere = Geometry::Sphere(3, 3);
-	mSphere = new Mesh(*sphere);
+	mSphere = new Mesh(*cube);
 	mSphere->RenderMode = GL_TRIANGLES;
 	mSphere->PolygonMode = GL_FILL;
 
@@ -181,7 +181,7 @@ void SPHFluidSimulation::initGeometry()
 	mSphereMaterial->SetShaderStage("shaders/FragmentShader.glsl", GL_FRAGMENT_SHADER);
 	mSphereMaterial->SetShader();
 
-	mSphereMaterial->BindMeshAttributes(*mSphere, "vertexPosition", NULL, NULL, NULL, NULL);
+	mSphereMaterial->BindMeshAttributes(*mSphere, "vertexPosition", "vertexNormal", NULL, NULL, NULL);
 	mSphereMaterial->BindUniformAttribute("projection");
 	mSphereMaterial->BindUniformAttribute("view");
 

@@ -24,20 +24,20 @@ Transform::~Transform() {}
 void Transform::MoveForward()
 {
 	vec3 worldForward = (mat3)GetRotationTransform() * Forward;
-	Position += worldForward;
+	Position += worldForward * 0.1f;
 }
 
 void Transform::MoveBackward()
 {
 	vec3 worldForward = (mat3)GetRotationTransform() * Forward;
-	Position -= worldForward;
+	Position -= worldForward * 0.1f;
 }
 void Transform::MoveRight()
 {
 	mat3 worldRotation = (mat3)GetRotationTransform();
 	vec3 worldForward = worldRotation * Forward;
 	vec3 worldUp = worldRotation * Up;
-	Position += cross(worldForward, worldUp);
+	Position += cross(worldForward, worldUp) * 0.1f;
 }
 
 void Transform::MoveLeft()
@@ -45,19 +45,19 @@ void Transform::MoveLeft()
 	mat3 worldRotation = (mat3)GetRotationTransform();
 	vec3 worldForward = worldRotation * Forward;
 	vec3 worldUp = worldRotation * Up;
-	Position -= cross(worldForward, worldUp);
+	Position -= cross(worldForward, worldUp) * 0.1f;
 }
 
 void Transform::MoveUp()
 {
 	vec3 worldUp = (mat3)GetRotationTransform() * Up;
-	Position += worldUp;
+	Position += worldUp * 0.1f;
 }
 
 void Transform::MoveDown()
 {
 	vec3 worldUp = (mat3)GetRotationTransform() * Up;
-	Position -= worldUp;
+	Position -= worldUp * 0.1f;
 }
 
 mat4 Transform::GetWorldTransform()
