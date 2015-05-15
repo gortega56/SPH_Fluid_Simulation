@@ -12,8 +12,8 @@
 #define SPH_CORE_RADIUS						1.25f
 #define SPH_CORE_RADIUS2					SPH_CORE_RADIUS * SPH_CORE_RADIUS
 
-#define SPH_CONTAINER_X						20.0f
-#define SPH_CONTAINER_Y						10.0f
+#define SPH_CONTAINER_X						30.0f
+#define SPH_CONTAINER_Y						15.0f
 #define SPH_CONTAINER_Z						3.0f
 
 #define SPH_GRID_X							(int)std::ceil(SPH_CONTAINER_X / SPH_CORE_RADIUS)
@@ -25,7 +25,7 @@
 #define PARTICLE_SCALE						1.24f			//  PARTICLE_RADIUS * 2
 #define PARTICLE_RADIUS						0.62f			//  r^3 = (3/4) * (1/pi) * PARTICLE_VOLUME
 
-#define SPH_CELL_PARTICLES_X				 std::floor(SPH_CONTAINER_X / PARTICLE_SCALE) * 0.5f
+#define SPH_CELL_PARTICLES_X				 std::floor(SPH_CONTAINER_X / PARTICLE_SCALE) * 0.25f
 #define SPH_CELL_PARTICLES_Y				 std::floor(SPH_CONTAINER_Y / PARTICLE_SCALE)
 #define SPH_CELL_PARTICLES_Z				 std::floor(SPH_CONTAINER_Z / PARTICLE_SCALE)
 
