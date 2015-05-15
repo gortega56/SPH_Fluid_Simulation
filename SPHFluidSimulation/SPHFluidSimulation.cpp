@@ -73,7 +73,7 @@ void SPHFluidSimulation::init()
 		}
 	}
 
-	mCamera->transform->Position.z = 10.0f;
+	mCamera->transform->Position.z = 25.0f;
 //	printf("NUM P: %i", p);
 }
 
@@ -173,7 +173,7 @@ void SPHFluidSimulation::initGeometry()
 
 	// Particle
 	Geometry *sphere = Geometry::Sphere(3, 3);
-	mSphere = new Mesh(*cube);
+	mSphere = new Mesh(*sphere);
 	mSphere->RenderMode = GL_TRIANGLES;
 	mSphere->PolygonMode = GL_FILL;
 
@@ -182,7 +182,7 @@ void SPHFluidSimulation::initGeometry()
 	mSphereMaterial->SetShaderStage("shaders/FragmentShader.glsl", GL_FRAGMENT_SHADER);
 	mSphereMaterial->SetShader();
 
-	mSphereMaterial->BindMeshAttributes(*mSphere, "vertexPosition", "vertexNormal", NULL, NULL, NULL);
+	mSphereMaterial->BindMeshAttributes(*mSphere, "vertexPosition", NULL, NULL, NULL, NULL);
 	mSphereMaterial->BindUniformAttribute("projection");
 	mSphereMaterial->BindUniformAttribute("view");
 
@@ -388,9 +388,9 @@ void SPHFluidSimulation::updateParticlesForces()
 
 					// Finish up force calculations
 					float CFNLength = length(colorFieldNormal);
-					printf("CFN LENGTH: %f\n", CFNLength);
+				//	printf("CFN LENGTH: %f\n", CFNLength);
 					if (CFNLength > COLOR_FIELD_THRESHOLD) {
-						fSurface = -SURFACE_TENSION * colorFieldLaplacian * (colorFieldNormal / CFNLength);
+						fSurface = -WATER_SURFACE_TENSION * colorFieldLaplacian * (colorFieldNormal / CFNLength);
 					}
 					
 					cell.particles[p1].mAcceleration = (fPressure + fViscous + fSurface + fGravity) / cell.particles[p1].mDensity;
@@ -461,7 +461,7 @@ void SPHFluidSimulation::stepSimulation(double secondsElapsed)
 	double dt = 0.01;
 
 	double accumulator = 0.0;
-
+	
 	double frameTime = secondsElapsed - currentTime;
 	if (frameTime > 0.25)
 	{
@@ -480,6 +480,11 @@ void SPHFluidSimulation::stepSimulation(double secondsElapsed)
 
 	const double alpha = accumulator / dt;
 	// interpolate between previous phyics state and current physics state
+	
+	char title[100];
+	float fps = 1.0f / frameTime;
+	sprintf_s(title, "SPH Fluid Simulation FPS: %f", fps);
+	glfwSetWindowTitle(window, title);
 }
 
 void SPHFluidSimulation::EulerIntegrationStep(double deltaTime)

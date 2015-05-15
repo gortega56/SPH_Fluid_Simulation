@@ -12,7 +12,7 @@
 #define SPH_CORE_RADIUS						1.25f
 #define SPH_CORE_RADIUS2					SPH_CORE_RADIUS * SPH_CORE_RADIUS
 
-#define SPH_CONTAINER_X						10.0f
+#define SPH_CONTAINER_X						20.0f
 #define SPH_CONTAINER_Y						10.0f
 #define SPH_CONTAINER_Z						3.0f
 
@@ -36,14 +36,13 @@
 #define IDEAL_WATER_VAPOR_CONSTANT			461.5f			// J/kg K
 #define WATER_MASS							1000.0f			// 1 g/cm^3 = 1000 kg/m^3
 #define WATER_REST_DENSITY					998.2f			// kg/m^3 
-#define WATER_DYNAMIC_VISCOSITY				1.002f			// s/m^2 x 10^-3
-
-#define SURFACE_TENSION						0.0728f
+#define WATER_DYNAMIC_VISCOSITY				0.001002f		// s/m^2 x 10^-3
+#define WATER_SURFACE_TENSION				0.0728f         // N/m
 #define COLOR_FIELD_THRESHOLD				0.065f
 
 #define GRAVITATIONAL_ACCELERATION			-9.80665f		// m/s^2
 
-#define SPH_CONTAINER_SPRING_CONSTANT		250.0f
+#define SPH_CONTAINER_SPRING_CONSTANT		200.0f
 #define SPH_CONTAINER_DAMPING				-0.9f
 
 struct SPHParticle
