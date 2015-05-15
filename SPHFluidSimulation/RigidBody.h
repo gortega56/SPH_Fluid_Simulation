@@ -19,6 +19,7 @@ public:
 	float	restitution;
 	mat3	inertiaTensor;
 	
+	RigidBody(float mass);
 	RigidBody(const RigidBody& other);
 	RigidBody();
 	~RigidBody();

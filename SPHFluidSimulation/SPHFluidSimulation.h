@@ -9,37 +9,41 @@
 #define MESH_COUNT							1
 #define GEOMETRY_COUNT						1
 
-#define SPH_CORE_RADIUS						0.045f
+#define SPH_CORE_RADIUS						1.25f
 #define SPH_CORE_RADIUS2					SPH_CORE_RADIUS * SPH_CORE_RADIUS
 
-#define SPH_CONTAINER_X						0.2f
-#define SPH_CONTAINER_Y						0.2f
-#define SPH_CONTAINER_Z						0.2f
+#define SPH_CONTAINER_X						10.0f
+#define SPH_CONTAINER_Y						10.0f
+#define SPH_CONTAINER_Z						3.0f
 
 #define SPH_GRID_X							(int)std::ceil(SPH_CONTAINER_X / SPH_CORE_RADIUS)
 #define SPH_GRID_Y							(int)std::ceil(SPH_CONTAINER_Y / SPH_CORE_RADIUS)
 #define SPH_GRID_Z							(int)std::ceil(SPH_CONTAINER_Z / SPH_CORE_RADIUS)
 #define SPH_GRID_COUNT						SPH_GRID_X * SPH_GRID_Y * SPH_GRID_Z
 
-#define PARTICLE_SCALE						0.03f
-#define PARTICLE_RADIUS						PARTICLE_SCALE * 0.5f
+#define PARTICLE_VOLUME						1.0f			//  WATER_MASS / WATER_REST_DENSITY 
+#define PARTICLE_SCALE						1.24f			//  PARTICLE_RADIUS * 2
+#define PARTICLE_RADIUS						0.62f			//  r^3 = (3/4) * (1/pi) * PARTICLE_VOLUME
 
-#define SPH_CELL_PARTICLES_X				std::floor(SPH_CONTAINER_X / PARTICLE_SCALE) * 0.5f
-#define SPH_CELL_PARTICLES_Y				std::floor(SPH_CONTAINER_Y / PARTICLE_SCALE)
-#define SPH_CELL_PARTICLES_Z				std::floor(SPH_CONTAINER_Z / PARTICLE_SCALE)
+#define SPH_CELL_PARTICLES_X				 std::floor(SPH_CONTAINER_X / PARTICLE_SCALE) * 0.5f
+#define SPH_CELL_PARTICLES_Y				 std::floor(SPH_CONTAINER_Y / PARTICLE_SCALE)
+#define SPH_CELL_PARTICLES_Z				 std::floor(SPH_CONTAINER_Z / PARTICLE_SCALE)
 
 #define PARTICLE_COUNT						SPH_CELL_PARTICLES_X * SPH_CELL_PARTICLES_Y *SPH_CELL_PARTICLES_Z
 
-#define WATER_REST_DENSITY					998.29f
-#define WATER_VAPOR_CONSTANT				3.0f
-#define WATER_VISCOSITY						100.5f
+// All Values for Water at 20 degrees Celsius
+#define WATER_ABSOLUTE_PRESSURE				238.4906f		// kg/m^2
+#define IDEAL_WATER_VAPOR_CONSTANT			461.5f			// J/kg K
+#define WATER_MASS							1000.0f			// 1 g/cm^3 = 1000 kg/m^3
+#define WATER_REST_DENSITY					998.2f			// kg/m^3 
+#define WATER_DYNAMIC_VISCOSITY				1.002f			// s/m^2 x 10^-3
 
 #define SURFACE_TENSION						0.0728f
-#define COLOR_FIELD_THRESHOLD				22000.065f
+#define COLOR_FIELD_THRESHOLD				0.065f
 
-#define GRAVITATIONAL_ACCELERATION			-9.80665f
+#define GRAVITATIONAL_ACCELERATION			-9.80665f		// m/s^2
 
-#define SPH_CONTAINER_SPRING_CONSTANT		1000.0f
+#define SPH_CONTAINER_SPRING_CONSTANT		250.0f
 #define SPH_CONTAINER_DAMPING				-0.9f
 
 struct SPHParticle
@@ -50,7 +54,7 @@ struct SPHParticle
 	float		mDensity;
 	float		mPressure;
 
-	SPHParticle() : mTransform(Transform(vec3(0.0f), vec3(0.0f), vec3(PARTICLE_SCALE))), mRigidBody(RigidBody()), mAcceleration(vec3(0.0f)), mDensity(0.0f), mPressure(0.0f) {};
+	SPHParticle() : mTransform(Transform(vec3(0.0f), vec3(0.0f), vec3(PARTICLE_SCALE))), mRigidBody(RigidBody(WATER_MASS)), mAcceleration(vec3(0.0f)), mDensity(0.0f), mPressure(0.0f) {};
 	SPHParticle(const SPHParticle& other) : mTransform(other.mTransform), mRigidBody(other.mRigidBody), mAcceleration(other.mAcceleration), mDensity(other.mDensity), mPressure(other.mPressure) {};
 };
 

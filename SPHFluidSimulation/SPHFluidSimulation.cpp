@@ -60,7 +60,7 @@ void SPHFluidSimulation::init()
 	//particle3.mTransform.Position = vec3(0, SPH_CONTAINER_Y, -SPH_CONTAINER_Z);
 	//cell.particles.push_back(particle3);
 
-	 int p = 0;
+	// int p = 0;
 	for (int x = 0; x < SPH_CELL_PARTICLES_X; x++) {
 		for (int y = 0; y < SPH_CELL_PARTICLES_Y; y++) {
 			for (int z = 0; z < SPH_CELL_PARTICLES_Z; z++) {
@@ -68,12 +68,13 @@ void SPHFluidSimulation::init()
 				SPHParticle& particle = mSPHParticles[i];
 				particle.mTransform.Position = vec3(PARTICLE_SCALE * x + PARTICLE_RADIUS, PARTICLE_SCALE * y + PARTICLE_RADIUS, -PARTICLE_SCALE * z - PARTICLE_RADIUS);
 				cell.particles.push_back(particle);
-				p++;
+
 			}
 		}
 	}
 
-	printf("NUM P: %i", p);
+	mCamera->transform->Position.z = 10.0f;
+//	printf("NUM P: %i", p);
 }
 
 void SPHFluidSimulation::updateScene(double secondsElapsed)
@@ -313,7 +314,7 @@ void SPHFluidSimulation::updateParticlesPressureDensity()
 					}
 
 					// Update particle with density and pressure
-					cell.particles[p1].mPressure = WATER_VAPOR_CONSTANT * (pDensity - WATER_REST_DENSITY);
+					cell.particles[p1].mPressure = IDEAL_WATER_VAPOR_CONSTANT * (pDensity - WATER_REST_DENSITY);
 					cell.particles[p1].mDensity = pDensity;
 
 				/*	printf("C%i P%i D: %f\n", index, p1, cell.particles[p1].mDensity);
@@ -334,8 +335,6 @@ void SPHFluidSimulation::updateParticlesForces()
 				int index = SPHGridCellIndex(x, y, z);
 				SPHCell& cell = mSPHGrid[index];
 				vector<int>& neighborIndices = mSPHCellIndexMap.at(index);
-
-				
 
 				// Update each particle
 				for (int p1 = 0; p1 < cell.particles.size(); p1++) {
@@ -366,13 +365,16 @@ void SPHFluidSimulation::updateParticlesForces()
 								fViscous += nCell.particles[p2].mRigidBody.mass * symmetricVelocity * vLaplacian;
 								//	printf("C%i P%i Vel: %f %f %f\n", index, p1, cell.particles[p1].mRigidBody.velocity.x, cell.particles[p1].mRigidBody.velocity.y, cell.particles[p1].mRigidBody.velocity.z);
 								//	printf("C%i P%i Vel: %f %f %f\n", nIndex, p2, nCell.particles[p2].mRigidBody.velocity.x, nCell.particles[p2].mRigidBody.velocity.y, nCell.particles[p2].mRigidBody.velocity.z);
+							
+								// Surface Force
+								float coefficient = (nCell.particles[p2].mRigidBody.mass / nCell.particles[p2].mDensity);
+								colorFieldNormal += coefficient * SmoothKernelPoly6Gradient(rDiff, rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
+								//	printf("CFN: %f\n", length(colorFieldNormal));
+								colorFieldLaplacian += coefficient * SmoothKernelPoly6Laplacian(rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
+								//	printf("C%i P%i fP: %f %f %f\n", index, p1, colorFieldNormal.x, colorFieldNormal.y, colorFieldNormal.z);
 							}
 							
-							// Surface Force
-							float coefficient = (nCell.particles[p2].mRigidBody.mass / nCell.particles[p2].mDensity);
-							colorFieldNormal += coefficient * SmoothKernelPoly6Gradient(rDiff, rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
-						//	printf("CFN: %f\n", length(colorFieldNormal));
-							colorFieldLaplacian += coefficient * SmoothKernelPoly6Laplacian(rDistance2, SPH_CORE_RADIUS, SPH_CORE_RADIUS2);
+							
 							
 						}
 					}	
@@ -380,28 +382,27 @@ void SPHFluidSimulation::updateParticlesForces()
 				//	printf("C%i P%i CFN: %f %f %f\n", index, p1, colorFieldNormal.x, colorFieldNormal.y, colorFieldNormal.z);
 
 					fPressure *= -1;
-					fViscous *= WATER_VISCOSITY;
+					fViscous *= WATER_DYNAMIC_VISCOSITY;
 					fSurface = vec3(0.0f);
 					fGravity = cell.particles[p1].mDensity * vec3(0.0f, GRAVITATIONAL_ACCELERATION, 0.0f);
 
 					// Finish up force calculations
 					float CFNLength = length(colorFieldNormal);
-				//	printf("CFN LENGTH: %f\n", CFNLength);
+					printf("CFN LENGTH: %f\n", CFNLength);
 					if (CFNLength > COLOR_FIELD_THRESHOLD) {
 						fSurface = -SURFACE_TENSION * colorFieldLaplacian * (colorFieldNormal / CFNLength);
 					}
 					
-
-
 					cell.particles[p1].mAcceleration = (fPressure + fViscous + fSurface + fGravity) / cell.particles[p1].mDensity;
-				
-				/*	printf("C%i P%i fP: %f %f %f\n", index, p1, fPressure.x, fPressure.y, fPressure.z);
-					printf("C%i P%i fV: %f %f %f\n", index, p1, fViscous.x, fViscous.y, fViscous.z);
-					printf("C%i P%i fS: %f %f %f\n", index, p1, fSurface.x, fSurface.y, fSurface.z);
-					printf("C%i P%i fG: %f %f %f\n", index, p1, fGravity.x, fGravity.y, fGravity.z);
-					printf("C%i P%i A: %f %f %f\n\n", index, p1, cell.particles[p1].mAcceleration.x, cell.particles[p1].mAcceleration.y, cell.particles[p1].mAcceleration.z);*/
+					
+				//	printf("C%i P%i fP: %f %f %f\n", index, p1, fPressure.x, fPressure.y, fPressure.z);
+				//	printf("C%i P%i fV: %f %f %f\n", index, p1, fViscous.x, fViscous.y, fViscous.z);
+				//	printf("C%i P%i fS: %f %f %f\n", index, p1, fSurface.x, fSurface.y, fSurface.z);
+				//	printf("C%i P%i fG: %f %f %f\n", index, p1, fGravity.x, fGravity.y, fGravity.z);*/
+				//	printf("C%i P%i A: %f %f %f\n\n", index, p1, cell.particles[p1].mAcceleration.x, cell.particles[p1].mAcceleration.y, cell.particles[p1].mAcceleration.z);
 
 					applyBoundingVolumeForce(cell.particles[p1]);
+
 				}
 			}
 		}
@@ -433,9 +434,9 @@ void SPHFluidSimulation::applyBoundingVolumeForce(SPHParticle& particle)
 		particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
 	}
 	else if (particle.mTransform.Position.y > boundingBoxMax.y && particle.mRigidBody.velocity.y >= 0) {
-		vec3 containerNormal = vec3(0.0f, -1.0f, 0.0f);
-		particle.mAcceleration += SPH_CONTAINER_SPRING_CONSTANT * containerNormal;
-		particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
+		//vec3 containerNormal = vec3(0.0f, -1.0f, 0.0f);
+	//	particle.mAcceleration += SPH_CONTAINER_SPRING_CONSTANT * containerNormal;
+		//particle.mAcceleration += containerNormal * dot(particle.mRigidBody.velocity, containerNormal) * SPH_CONTAINER_DAMPING;
 	}
 
 	if (particle.mTransform.Position.z < boundingBoxMin.z && particle.mRigidBody.velocity.z <= 0) {
@@ -506,7 +507,7 @@ void SPHFluidSimulation::VerletIntegrationStep(double deltaTime)
 			vec3 previousPosition = cell.particles[p].mTransform.Position;
 			vec3 previousVelocity = cell.particles[p].mRigidBody.velocity;
 
-			cell.particles[p].mTransform.Position = previousPosition + (previousVelocity * (float)deltaTime) + (cell.particles[p].mAcceleration * (float)deltaTime * (float)deltaTime) * 0.01f;
+			cell.particles[p].mTransform.Position = previousPosition + (previousVelocity * (float)deltaTime) + (cell.particles[p].mAcceleration * (float)deltaTime * (float)deltaTime);
 			cell.particles[p].mRigidBody.velocity = (cell.particles[p].mTransform.Position - previousPosition) / (float)deltaTime;
 			//printf("C%i P%i POS: %f %f %f\n", i, p, cell.particles[p].mTransform.Position.x, cell.particles[p].mTransform.Position.y, cell.particles[p].mTransform.Position.z);
 		}
@@ -518,14 +519,6 @@ void SPHFluidSimulation::updateTransforms()
 	glBindBuffer(GL_ARRAY_BUFFER, mTransformBufferID);
 	mat4* matrices = (mat4*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 
-	//int gridsCount = SPH_GRID_X * SPH_GRID_Y * SPH_GRID_Z;
-	//int particleCount = 0;
-	//for (int i = 0; i < gridsCount; i++) {
-	//	SPHCell& cell = mSPHGrid[i];
-	//	for (int p = 0; p < cell.particles.size(); p++) {
-	//		matrices[particleCount++] = cell.particles[p].mTransform.GetWorldTransform();
-	//	}
-	//}
 	int particleCount = 0;
 	for (int x = 0; x < SPH_GRID_X; x++) {
 		for (int y = 0; y < SPH_GRID_Y; y++) {
